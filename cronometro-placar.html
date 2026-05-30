@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Goleio - Cronômetro e Placar</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    .scoreboard-shell { min-height: 100vh; padding: 18px; display: grid; place-items: center; }
+    .scoreboard-card { width: min(100%, 900px); }
+    .clock-number { font-size: clamp(3rem, 12vw, 7rem); font-weight: 950; color: var(--gold-2); text-align: center; letter-spacing: -0.06em; }
+    .score-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
+    .score-team { text-align: center; background: rgba(255,255,255,.05); border: 1px solid var(--line); border-radius: 22px; padding: 18px; }
+    .score-team strong { display: block; font-size: clamp(4rem, 14vw, 8rem); line-height: 1; color: var(--text); }
+    .score-actions { display: flex; gap: 8px; margin-top: 12px; }
+    .score-actions button { flex: 1; }
+    @media(max-width:640px){ .score-grid { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  <section class="scoreboard-shell">
+    <div class="scoreboard-card card">
+      <div class="card-top">
+        <div>
+          <p class="eyebrow">Goleio</p>
+          <h1>Cronômetro & Placar</h1>
+          <p class="muted">Tela separada para usar durante o racha.</p>
+        </div>
+        <a class="btn-secondary" style="text-decoration:none" href="index.html">Voltar</a>
+      </div>
+
+      <div class="clock-number" id="timer">00:00</div>
+      <div class="form-actions">
+        <button class="btn-primary" id="startBtn">Iniciar</button>
+        <button class="btn-secondary" id="pauseBtn">Pausar</button>
+        <button class="btn-danger" id="resetBtn">Zerar</button>
+      </div>
+
+      <div class="score-grid">
+        <div class="score-team">
+          <p class="eyebrow">Time 1</p>
+          <strong id="scoreA">0</strong>
+          <div class="score-actions"><button class="btn-secondary" id="minusA">-</button><button class="btn-primary" id="plusA">+</button></div>
+        </div>
+        <div class="score-team">
+          <p class="eyebrow">Time 2</p>
+          <strong id="scoreB">0</strong>
+          <div class="score-actions"><button class="btn-secondary" id="minusB">-</button><button class="btn-primary" id="plusB">+</button></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    let seconds = 0, running = false, interval = null, a = 0, b = 0;
+    const $ = (id) => document.getElementById(id);
+    function render(){ const m = String(Math.floor(seconds/60)).padStart(2,'0'); const s = String(seconds%60).padStart(2,'0'); $('timer').textContent = `${m}:${s}`; $('scoreA').textContent = a; $('scoreB').textContent = b; }
+    $('startBtn').onclick = () => { if(running) return; running = true; interval = setInterval(()=>{ seconds++; render(); }, 1000); };
+    $('pauseBtn').onclick = () => { running = false; clearInterval(interval); };
+    $('resetBtn').onclick = () => { running = false; clearInterval(interval); seconds = 0; render(); };
+    $('plusA').onclick = () => { a++; render(); }; $('minusA').onclick = () => { a = Math.max(0, a-1); render(); };
+    $('plusB').onclick = () => { b++; render(); }; $('minusB').onclick = () => { b = Math.max(0, b-1); render(); };
+    render();
+  </script>
+</body>
+</html>

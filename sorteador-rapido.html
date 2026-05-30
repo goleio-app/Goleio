@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Goleio - Sorteador rápido</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg:#050608;--bg2:#0d1015;--card:#0f1218;--gold:#e2c458;--text:#f5f1e5;--muted:#a9a39a;--line:rgba(226,196,88,.15)}
+    *{box-sizing:border-box} body{margin:0;font-family:Inter,system-ui,sans-serif;background:radial-gradient(circle at 20% 0%, rgba(226,196,88,.12), transparent 26%),linear-gradient(180deg,#050608,#090b10);color:var(--text);min-height:100svh;padding:20px}
+    .wrap{max-width:760px;margin:0 auto}.card{background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01));border:1px solid var(--line);border-radius:24px;padding:18px;box-shadow:0 18px 60px rgba(0,0,0,.32)}
+    h1{margin:8px 0 6px;font-size:2rem}.eyebrow{color:var(--gold);font-weight:800;text-transform:uppercase;letter-spacing:.12em;font-size:.78rem}.muted{color:var(--muted)}
+    .grid{display:grid;grid-template-columns:1.4fr .8fr;gap:16px;margin-top:18px}.stack{display:grid;gap:14px}
+    textarea,input,select{width:100%;background:#11151d;border:1px solid var(--line);color:var(--text);border-radius:16px;padding:14px 15px;font:inherit}
+    button,a.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;border:none;border-radius:16px;padding:14px 16px;font:inherit;font-weight:800;cursor:pointer;text-decoration:none}
+    .btn-primary{background:linear-gradient(180deg,#ecd572,#d7b647);color:#17130a}.btn-secondary{background:#121720;color:var(--text);border:1px solid var(--line)}
+    .teams{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}.team{background:#0c1016;border:1px solid var(--line);border-radius:18px;padding:14px}.team h3{margin:0 0 10px;font-size:1rem;color:var(--gold)}
+    .pill{display:inline-flex;padding:6px 10px;border-radius:999px;background:rgba(226,196,88,.1);color:var(--gold);font-size:.82rem;font-weight:700}.actions{display:flex;gap:10px;flex-wrap:wrap}.hint-list{margin:0;padding-left:18px;color:var(--muted)}
+    @media(max-width:640px){body{padding:14px}.grid{grid-template-columns:1fr}h1{font-size:1.65rem}}
+  </style>
+</head>
+<body>
+  <div class="wrap stack">
+    <section class="card">
+      <div class="eyebrow">Ferramenta rápida</div>
+      <h1>Sorteador rápido</h1>
+      <p class="muted">Cole os nomes dos jogadores, escolha quantos atletas por time e gere na hora. Ideal para usar sem login.</p>
+      <div class="actions" style="margin-top:14px">
+        <a class="btn btn-secondary" href="index.html">Voltar para o Goleio</a>
+        <a class="btn btn-secondary" href="cronometro-placar.html">Cronômetro e placar</a>
+      </div>
+    </section>
+    <section class="grid">
+      <div class="card stack">
+        <label>Jogadores (um por linha ou separados por vírgula)</label>
+        <textarea id="playersInput" rows="14" placeholder="David
+Erick
+Felipe
+João"></textarea>
+        <div class="actions">
+          <button class="btn-primary" id="generateBtn">Gerar times</button>
+          <button class="btn-secondary" id="copyBtn" type="button">Copiar resultado</button>
+        </div>
+      </div>
+      <div class="card stack">
+        <div>
+          <label>Jogadores por time</label>
+          <input id="perTeam" type="number" min="1" max="30" value="5" />
+        </div>
+        <div>
+          <label>Modo</label>
+          <select id="mode"><option value="aleatorio">Aleatório</option><option value="equilibrado">Zigue-zague simples</option></select>
+        </div>
+        <div>
+          <span class="pill" id="countPill">0 jogadores</span>
+        </div>
+        <ul class="hint-list">
+          <li>Perfeito para um rachinha rápido.</li>
+          <li>Não salva nada no banco.</li>
+          <li>O modo equilibrado distribui em zigue-zague.</li>
+        </ul>
+      </div>
+    </section>
+    <section class="card stack">
+      <div class="eyebrow">Resultado</div>
+      <div id="teams" class="teams"></div>
+    </section>
+  </div>
+  <script>
+    const input = document.getElementById('playersInput');
+    const perTeamInput = document.getElementById('perTeam');
+    const modeInput = document.getElementById('mode');
+    const teamsEl = document.getElementById('teams');
+    const countPill = document.getElementById('countPill');
+    let lastText='';
+    function parsePlayers(){
+      const raw=input.value.replace(/,/g,'
+').split(/
++/).map(v=>v.trim()).filter(Boolean);
+      countPill.textContent=`${raw.length} jogador(es)`;
+      return raw;
+    }
+    function shuffle(arr){for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]]}return arr}
+    function build(players, perTeam, mode){
+      const totalTeams=Math.max(1, Math.ceil(players.length/perTeam));
+      const teams=Array.from({length:totalTeams},(_,i)=>({name:`Time ${i+1}`, players:[]}));
+      const list=shuffle([...players]);
+      if(mode==='aleatorio'){
+        list.forEach((name,idx)=>teams[idx%teams.length].players.push(name));
+      } else {
+        let order=[...teams.keys()]; let ptr=0; let dir=1;
+        list.forEach((name)=>{
+          teams[order[ptr]].players.push(name);
+          ptr += dir;
+          if(ptr>=teams.length){ptr=teams.length-1;dir=-1}
+          if(ptr<0){ptr=0;dir=1}
+        });
+      }
+      return teams;
+    }
+    function render(){
+      const players=parsePlayers();
+      const perTeam=Math.max(1, Number(perTeamInput.value||5));
+      if(players.length<2){teamsEl.innerHTML='<p class="muted">Adicione pelo menos 2 jogadores para sortear.</p>'; lastText=''; return}
+      const teams=build(players, perTeam, modeInput.value);
+      teamsEl.innerHTML=teams.map(team=>`<article class="team"><h3>${team.name}</h3>${team.players.map((p,i)=>`<div>${i+1}. ${p}</div>`).join('')}</article>`).join('');
+      lastText=teams.map(team=>`${team.name}
+${team.players.map((p,i)=>`${i+1}. ${p}`).join('
+')}`).join('
+
+');
+    }
+    document.getElementById('generateBtn').addEventListener('click', render);
+    document.getElementById('copyBtn').addEventListener('click', async()=>{ if(!lastText){render()} if(!lastText) return; await navigator.clipboard.writeText(lastText); alert('Resultado copiado!'); });
+    input.addEventListener('input', parsePlayers); parsePlayers();
+  </script>
+</body>
+</html>
