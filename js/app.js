@@ -2225,14 +2225,37 @@ function drawBrazilFlag(ctx, x, y, w, h) {
   ctx.restore();
 }
 
-function drawStoryRadar(ctx, skills, cx, cy, radius) {
+function drawStoryRadar(ctx, skills, cx, cy, radius, options = {}) {
   const list = (skills || []).map((skill) => ({ ...skill, value: normalizeSkillScore(skill.value, 60) }));
   if (!list.length) return;
   const step = (Math.PI * 2) / list.length;
   const start = -Math.PI / 2;
+  const labelGap = options.labelGap ?? 50;
+  const labelFont = options.labelFont ?? 22;
+  const valueFont = options.valueFont ?? 25;
+
   ctx.save();
-  ctx.lineWidth = 1.1;
-  ctx.strokeStyle = 'rgba(245, 210, 72, .22)';
+
+  // Fundo discreto para o radar não parecer flutuando dentro da cartinha.
+  if (options.panel) {
+    const panelW = radius * 3.9;
+    const panelH = radius * 3.1;
+    const px = cx - panelW / 2;
+    const py = cy - panelH / 2;
+    canvasRoundRect(ctx, px, py, panelW, panelH, 28);
+    const pg = ctx.createLinearGradient(px, py, px + panelW, py + panelH);
+    pg.addColorStop(0, 'rgba(0,0,0,.10)');
+    pg.addColorStop(.55, 'rgba(0,0,0,.22)');
+    pg.addColorStop(1, 'rgba(212,175,55,.045)');
+    ctx.fillStyle = pg;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(212,175,55,.13)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+
+  ctx.lineWidth = 1.15;
+  ctx.strokeStyle = 'rgba(245, 210, 72, .18)';
   for (let ring = 1; ring <= 4; ring += 1) {
     const r = radius * (ring / 4);
     ctx.beginPath();
@@ -2245,6 +2268,7 @@ function drawStoryRadar(ctx, skills, cx, cy, radius) {
     ctx.closePath();
     ctx.stroke();
   }
+
   list.forEach((_, i) => {
     const a = start + i * step;
     ctx.beginPath();
@@ -2255,40 +2279,48 @@ function drawStoryRadar(ctx, skills, cx, cy, radius) {
 
   const points = list.map((skill, i) => {
     const pct = Math.max(0, Math.min(1, (skill.value - 60) / 39));
-    const r = radius * (.18 + pct * .82);
+    const r = radius * (.16 + pct * .84);
     const a = start + i * step;
     return { x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r, skill, angle: a };
   });
+
   ctx.beginPath();
   points.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y));
   ctx.closePath();
-  ctx.fillStyle = 'rgba(220, 178, 19, .44)';
+  ctx.fillStyle = 'rgba(220, 178, 19, .38)';
   ctx.fill();
   ctx.strokeStyle = '#f5d22f';
-  ctx.lineWidth = 4;
-  ctx.shadowColor = 'rgba(245, 210, 47, .55)';
-  ctx.shadowBlur = 18;
+  ctx.lineWidth = 3.4;
+  ctx.shadowColor = 'rgba(245, 210, 47, .45)';
+  ctx.shadowBlur = 14;
   ctx.stroke();
   ctx.shadowBlur = 0;
+
   points.forEach((p) => {
     ctx.fillStyle = '#f5d22f';
     ctx.beginPath();
-    ctx.arc(p.x, p.y, 5.8, 0, Math.PI * 2);
+    ctx.arc(p.x, p.y, 5.3, 0, Math.PI * 2);
     ctx.fill();
   });
 
-  ctx.font = '900 23px Inter, Arial, sans-serif';
   ctx.textBaseline = 'middle';
   list.forEach((skill, i) => {
     const a = start + i * step;
-    const lx = cx + Math.cos(a) * (radius + 46);
-    const ly = cy + Math.sin(a) * (radius + 31);
-    ctx.textAlign = Math.abs(Math.cos(a)) < .2 ? 'center' : (Math.cos(a) < 0 ? 'right' : 'left');
+    const lx = cx + Math.cos(a) * (radius + labelGap);
+    const ly = cy + Math.sin(a) * (radius + labelGap * .78);
+    const align = Math.abs(Math.cos(a)) < .25 ? 'center' : (Math.cos(a) < 0 ? 'right' : 'left');
+    ctx.textAlign = align;
+    ctx.shadowColor = 'rgba(0,0,0,.75)';
+    ctx.shadowBlur = 8;
     ctx.fillStyle = '#f2d85c';
-    ctx.fillText(skill.short, lx, ly - 15);
+    ctx.font = `900 ${labelFont}px Inter, Arial, sans-serif`;
+    ctx.fillText(skill.short, lx, ly - 16);
     ctx.fillStyle = '#fff1a8';
+    ctx.font = `900 ${valueFont}px Inter, Arial, sans-serif`;
     ctx.fillText(String(skill.value), lx, ly + 15);
+    ctx.shadowBlur = 0;
   });
+
   ctx.restore();
 }
 
@@ -2315,6 +2347,7 @@ async function drawGoleioStoryCanvas(canvas) {
   const H = 1920;
   canvas.width = W;
   canvas.height = H;
+
   const p = getMyRachaProfile();
   const average = getProfileCardAverage();
   const attrs = getProfileCardAttrs() || {};
@@ -2327,48 +2360,68 @@ async function drawGoleioStoryCanvas(canvas) {
   const logo = await loadCanvasImage('assets/logos/goleio-icon-192.png');
 
   ctx.clearRect(0, 0, W, H);
+
+  // STORY FINAL - layout fixo 1080x1920. Nada aqui depende de CSS/HTML,
+  // então a imagem baixada fica igual à prévia e não quebra em celulares.
   ctx.fillStyle = '#050505';
   ctx.fillRect(0, 0, W, H);
-  let grad = ctx.createRadialGradient(120, 20, 20, 220, 160, 520);
-  grad.addColorStop(0, 'rgba(212,175,55,.34)');
-  grad.addColorStop(1, 'rgba(212,175,55,0)');
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, W, H);
-  grad = ctx.createRadialGradient(W + 80, H * .63, 20, W + 80, H * .63, 560);
-  grad.addColorStop(0, 'rgba(212,175,55,.22)');
+
+  let grad = ctx.createRadialGradient(120, 70, 20, 230, 185, 540);
+  grad.addColorStop(0, 'rgba(212,175,55,.30)');
   grad.addColorStop(1, 'rgba(212,175,55,0)');
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, W, H);
 
+  grad = ctx.createRadialGradient(W + 120, H * .54, 20, W + 120, H * .54, 670);
+  grad.addColorStop(0, 'rgba(212,175,55,.18)');
+  grad.addColorStop(1, 'rgba(212,175,55,0)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Borda geral da arte, com margem segura para Story.
   canvasRoundRect(ctx, 2, 2, W - 4, H - 4, 42);
   ctx.strokeStyle = 'rgba(212,175,55,.42)';
   ctx.lineWidth = 2;
   ctx.stroke();
 
-  if (logo) ctx.drawImage(logo, 92, 95, 92, 92);
+  // Cabeçalho.
+  if (logo) ctx.drawImage(logo, 88, 96, 88, 88);
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
   ctx.fillStyle = '#f4d55d';
-  ctx.font = '900 46px Inter, Arial, sans-serif';
-  ctx.letterSpacing = '10px';
+  ctx.font = '900 45px Inter, Arial, sans-serif';
+  ctx.letterSpacing = '11px';
   ctx.fillText('GOLEIO', 220, 135);
   ctx.letterSpacing = '0px';
-  ctx.fillStyle = 'rgba(255,255,255,.70)';
-  ctx.font = '500 33px Inter, Arial, sans-serif';
-  ctx.fillText('Crie sua cartinha', 220, 185);
+  ctx.fillStyle = 'rgba(255,255,255,.72)';
+  ctx.font = '500 34px Inter, Arial, sans-serif';
+  ctx.fillText('Crie sua cartinha', 220, 188);
 
-  const cardX = 185;
-  const cardY = 300;
-  const cardW = 710;
-  const cardH = 1020;
+  // Cartinha grande, centralizada, no mesmo estilo da cartinha do app.
+  const cardX = 110;
+  const cardY = 280;
+  const cardW = 860;
+  const cardH = 1098;
+
   ctx.save();
   canvasCardPath(ctx, cardX, cardY, cardW, cardH);
   ctx.clip();
+
   const cgrad = ctx.createLinearGradient(cardX, cardY, cardX + cardW, cardY + cardH);
   cgrad.addColorStop(0, '#1a1b18');
-  cgrad.addColorStop(.40, '#070707');
+  cgrad.addColorStop(.38, '#070707');
   cgrad.addColorStop(1, '#202018');
   ctx.fillStyle = cgrad;
   ctx.fillRect(cardX, cardY, cardW, cardH);
-  ctx.strokeStyle = 'rgba(255,255,255,.035)';
+
+  // Brilho e textura dentro da cartinha.
+  let cardGlow = ctx.createRadialGradient(cardX + cardW * .76, cardY + 120, 20, cardX + cardW * .76, cardY + 120, 520);
+  cardGlow.addColorStop(0, 'rgba(245,213,93,.12)');
+  cardGlow.addColorStop(1, 'rgba(245,213,93,0)');
+  ctx.fillStyle = cardGlow;
+  ctx.fillRect(cardX, cardY, cardW, cardH);
+
+  ctx.strokeStyle = 'rgba(255,255,255,.028)';
   ctx.lineWidth = 1;
   for (let i = -cardH; i < cardW; i += 32) {
     ctx.beginPath();
@@ -2377,35 +2430,36 @@ async function drawGoleioStoryCanvas(canvas) {
     ctx.stroke();
   }
   ctx.restore();
+
   canvasCardPath(ctx, cardX, cardY, cardW, cardH);
-  ctx.strokeStyle = 'rgba(212,175,55,.42)';
+  ctx.strokeStyle = 'rgba(212,175,55,.48)';
   ctx.lineWidth = 2;
   ctx.stroke();
 
-  ctx.fillStyle = '#fff1a8';
-  ctx.font = '900 118px Inter, Arial, sans-serif';
-  ctx.fillText(String(overall), cardX + 70, cardY + 168);
-  ctx.fillStyle = '#fff';
-  ctx.font = '900 50px Inter, Arial, sans-serif';
-  ctx.fillText(pos, cardX + 78, cardY + 235);
-  drawBrazilFlag(ctx, cardX + 78, cardY + 260, 70, 48);
-
-  const crestX = cardX + cardW - 155;
-  const crestY = cardY + 68;
+  // Marca vertical: discreta e dentro da lateral da cartinha, sem invadir radar.
   ctx.save();
-  canvasRoundRect(ctx, crestX, crestY, 118, 118, 32);
-  ctx.fillStyle = 'rgba(0,0,0,.38)';
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(212,175,55,.52)';
-  ctx.lineWidth = 2;
-  ctx.stroke();
-  if (logo) ctx.drawImage(logo, crestX + 21, crestY + 21, 76, 76);
+  ctx.translate(cardX + 68, cardY + 875);
+  ctx.rotate(-Math.PI / 2);
+  ctx.fillStyle = 'rgba(255,255,255,.34)';
+  ctx.font = '900 74px Inter, Arial, sans-serif';
+  ctx.fillText('goleio', 0, 0);
   ctx.restore();
 
-  const photoX = cardX + 250;
-  const photoY = cardY + 132;
-  const photoW = 388;
-  const photoH = 398;
+  // Overall / posição / bandeira — bloco fixo à esquerda.
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#fff1a8';
+  ctx.font = '900 116px Inter, Arial, sans-serif';
+  ctx.fillText(String(overall), cardX + 78, cardY + 200);
+  ctx.fillStyle = '#fff';
+  ctx.font = '900 54px Inter, Arial, sans-serif';
+  ctx.fillText(pos, cardX + 84, cardY + 274);
+  drawBrazilFlag(ctx, cardX + 84, cardY + 306, 76, 52);
+
+  // Foto: área própria, sem invadir logo nem nome.
+  const photoX = cardX + 300;
+  const photoY = cardY + 170;
+  const photoW = 500;
+  const photoH = 430;
   if (photo) {
     drawCoverImage(ctx, photo, photoX, photoY, photoW, photoH, 30);
   } else {
@@ -2414,48 +2468,69 @@ async function drawGoleioStoryCanvas(canvas) {
     ctx.fillStyle = '#212121';
     ctx.fill();
     ctx.fillStyle = '#f4d55d';
-    ctx.font = '900 96px Inter, Arial, sans-serif';
+    ctx.font = '900 106px Inter, Arial, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(initials(p), photoX + photoW / 2, photoY + photoH / 2);
     ctx.restore();
   }
 
-  ctx.fillStyle = 'rgba(0,0,0,.72)';
-  canvasRoundRect(ctx, cardX + 185, cardY + 548, cardW - 235, 118, 0);
-  ctx.fill();
-  ctx.fillStyle = '#fff';
-  ctx.textAlign = 'center';
-  ctx.font = '900 58px Inter, Arial, sans-serif';
-  ctx.fillText(name, cardX + cardW / 2 + 45, cardY + 604);
-  ctx.fillStyle = 'rgba(255,255,255,.68)';
-  ctx.font = '800 27px Inter, Arial, sans-serif';
-  ctx.fillText(username, cardX + cardW / 2 + 45, cardY + 646);
-
+  // Selo do Goleio: sempre desenhado APÓS a foto, com fundo opaco.
+  // Assim nunca fica atrás da imagem do jogador.
+  const crestSize = 112;
+  const crestX = cardX + cardW - 178;
+  const crestY = cardY + 128;
   ctx.save();
-  ctx.translate(cardX + 68, cardY + 760);
-  ctx.rotate(-Math.PI / 2);
-  ctx.fillStyle = 'rgba(255,255,255,.55)';
-  ctx.font = '900 84px Inter, Arial, sans-serif';
-  ctx.fillText('goleio', 0, 0);
+  canvasRoundRect(ctx, crestX, crestY, crestSize, crestSize, 30);
+  ctx.fillStyle = 'rgba(0,0,0,.78)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(212,175,55,.72)';
+  ctx.lineWidth = 2.2;
+  ctx.stroke();
+  if (logo) ctx.drawImage(logo, crestX + 20, crestY + 20, 72, 72);
   ctx.restore();
 
-  ctx.strokeStyle = 'rgba(212,175,55,.22)';
+  // Faixa do nome: caixa fixa e sem sobrepor radar.
+  const nameBoxX = cardX + 245;
+  const nameBoxY = cardY + 640;
+  const nameBoxW = cardW - 310;
+  const nameBoxH = 120;
+  ctx.fillStyle = 'rgba(0,0,0,.80)';
+  canvasRoundRect(ctx, nameBoxX, nameBoxY, nameBoxW, nameBoxH, 0);
+  ctx.fill();
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#fff';
+  ctx.font = '900 58px Inter, Arial, sans-serif';
+  ctx.fillText(name, nameBoxX + nameBoxW / 2, nameBoxY + 55);
+  ctx.fillStyle = 'rgba(255,255,255,.68)';
+  ctx.font = '800 29px Inter, Arial, sans-serif';
+  ctx.fillText(username, nameBoxX + nameBoxW / 2, nameBoxY + 96);
+
+  // Separador claro entre identificação e radar.
+  ctx.strokeStyle = 'rgba(212,175,55,.26)';
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.moveTo(cardX + 245, cardY + 692);
-  ctx.lineTo(cardX + cardW - 110, cardY + 692);
+  ctx.moveTo(cardX + 245, cardY + 795);
+  ctx.lineTo(cardX + cardW - 150, cardY + 795);
   ctx.stroke();
 
-  drawStoryRadar(ctx, skills, cardX + cardW / 2 + 52, cardY + 875, 104);
+  // Radar: área fixa no rodapé da cartinha. Labels não saem do escudo.
+  drawStoryRadar(ctx, skills, cardX + cardW / 2 + 58, cardY + 945, 118, {
+    panel: false,
+    labelGap: 56,
+    labelFont: 21,
+    valueFont: 25
+  });
 
+  // Linha de separação para CTA.
   ctx.strokeStyle = 'rgba(212,175,55,.42)';
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.moveTo(82, 1514);
-  ctx.lineTo(W - 82, 1514);
+  ctx.moveTo(82, 1512);
+  ctx.lineTo(W - 82, 1512);
   ctx.stroke();
 
+  // Texto de divulgação.
   ctx.textAlign = 'center';
   ctx.fillStyle = '#fff';
   ctx.font = '900 42px Inter, Arial, sans-serif';
@@ -2464,7 +2539,6 @@ async function drawGoleioStoryCanvas(canvas) {
   ctx.font = '900 36px Inter, Arial, sans-serif';
   ctx.fillText('goleio-app.github.io/Goleio/', W / 2, 1738);
 }
-
 async function renderStoryCanvasPreview() {
   const canvas = $('storyCardPreview');
   if (!canvas || canvas.tagName?.toLowerCase() !== 'canvas') return;
