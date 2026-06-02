@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Goleio – Cronômetro e Placar</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: #0b1020;
+      color: #f5f5f5;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 10px;
+    }
+
+    .container {
+      background: #161b30;
+      width: 100%;
+      max-width: 900px;
+      border-radius: 10px;
+      padding: 16px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.5);
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 10px;
+      color: #00e676;
+      font-size: 1.5rem;
+    }
+
+    .section-title {
+      font-size: 0.9rem;
+      color: #cfd8dc;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .clock {
+      text-align: center;
+      font-size: 1.1rem;
+      margin-bottom: 16px;
+      color: #ffca28;
+    }
+
+    .mode-switch {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .mode-btn {
+      padding: 6px 10px;
+      border-radius: 20px;
+      border: 1px solid #263238;
+      background: #1c2331;
+      color: #cfd8dc;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+
+    .mode-btn.active {
+      background: #00e676;
+      color: #000;
+      border-color: #00e676;
+      font-weight: bold;
+    }
+
+    .chrono {
+      text-align: center;
+      margin-bottom: 16px;
+    }
+
+    .chrono-time {
+      font-size: 2.4rem;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+
+    .btn-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      margin-bottom: 10px;
+    }
+
+    button {
+      padding: 8px 12px;
+      border-radius: 5px;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 0.9rem;
+      background: #00e676;
+      color: #000;
+      transition: background 0.2s;
+      min-width: 90px;
+    }
+
+    button:hover {
+      background: #00c853;
+    }
+
+    .btn-secondary {
+      background: #2979ff;
+      color: #fff;
+    }
+
+    .btn-secondary:hover {
+      background: #1565c0;
+    }
+
+    .btn-danger {
+      background: #ff5252;
+      color: #fff;
+    }
+
+    .btn-danger:hover {
+      background: #e53935;
+    }
+
+    .scoreboard {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .team-card {
+      flex: 1;
+      min-width: 160px;
+      background: #1e2438;
+      border-radius: 8px;
+      padding: 10px 12px;
+      text-align: center;
+    }
+
+    .team-name {
+      font-size: 1rem;
+      font-weight: bold;
+      margin-bottom: 6px;
+      color: #ffca28;
+    }
+
+    .score {
+      font-size: 2.2rem;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+
+    .score-btns {
+      display: flex;
+      gap: 6px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .score-btns button {
+      min-width: 40px;
+      padding: 6px 8px;
+    }
+
+    .footer {
+      margin-top: 14px;
+      font-size: 0.75rem;
+      color: #b0bec5;
+      text-align: center;
+    }
+
+    .alert-fim {
+      margin-top: 4px;
+      font-size: 0.9rem;
+      color: #ffca28;
+      font-weight: bold;
+      text-align: center;
+      min-height: 1.2em;
+    }
+
+    @media (max-width: 600px) {
+      h1 { font-size: 1.3rem; }
+      .chrono-time { font-size: 2rem; }
+      .score { font-size: 2rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div style="width:100%;display:flex;justify-content:center;margin-bottom:18px;">
+      <img src="goleio1.png" alt="Logo Goleio" style="max-width:220px;width:100%;height:auto;border-radius:12px;box-shadow:0 2px 16px #0006;">
+    </div>
+    <button onclick="window.location.href='index.html'" style="width:100%;margin-bottom:16px;padding:12px 0;font-size:1.1rem;background:#2979ff;color:#fff;border:none;border-radius:8px;box-shadow:0 2px 8px #0004;cursor:pointer;font-weight:bold;">Voltar para Sorteio de Times</button>
+    <h1>Goleio – Cronômetro & Placar</h1>
+
+    <!-- Relógio em tempo real -->
+    <div>
+      <p class="section-title">Relógio</p>
+      <div id="clock" class="clock">--:--:--</div>
+    </div>
+
+    <!-- Seleção de modo -->
+    <div class="mode-switch">
+      <button id="btnModoChrono" class="mode-btn active">Cronômetro</button>
+      <button id="btnModoTimer" class="mode-btn">Timer</button>
+      <input id="inputMinutosTimer" type="number" min="1" max="99" value="7" style="width:70px;margin-left:8px;padding:6px 4px;border-radius:6px;border:1px solid #263238;background:#1c2331;color:#eceff1;font-size:1rem;" title="Minutos do Timer" />
+      <span style="color:#cfd8dc;font-size:0.95rem;margin-left:4px;">min</span>
+    </div>
+
+    <!-- Área Cronômetro / Timer -->
+    <div class="chrono">
+      <p class="section-title" id="labelModo">Cronômetro do racha</p>
+      <div id="chronoTime" class="chrono-time">00:00:00</div>
+      <div class="btn-row">
+        <button id="btnStart">Iniciar</button>
+        <button id="btnPause" class="btn-secondary">Pausar</button>
+        <button id="btnReset" class="btn-danger">Zerar</button>
+      </div>
+      <div id="alertFim" class="alert-fim"></div>
+    </div>
+
+    <!-- Placar -->
+    <div>
+      <p class="section-title">Placar</p>
+      <div class="scoreboard">
+        <div class="team-card">
+          <div class="team-name">
+            Time 1
+          </div>
+          <div id="score1" class="score">0</div>
+          <div class="score-btns">
+            <button id="t1Menos" class="btn-secondary">-</button>
+            <button id="t1Mais">+</button>
+          </div>
+        </div>
+
+        <div class="team-card">
+          <div class="team-name">
+            Time 2
+          </div>
+          <div id="score2" class="score">0</div>
+          <div class="score-btns">
+            <button id="t2Menos" class="btn-secondary">-</button>
+            <button id="t2Mais">+</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p class="footer">
+      Escolha entre Cronômetro ou Timer.
+      O Timer avisa na tela e com som quando o tempo acabar.
+    </p>
+  </div>
+
+  <script>
+    // Relógio digital [web:112][web:118]
+    function atualizarRelogio() {
+      const clockEl = document.getElementById("clock");
+      const agora = new Date();
+      const h = String(agora.getHours()).padStart(2, "0");
+      const m = String(agora.getMinutes()).padStart(2, "0");
+      const s = String(agora.getSeconds()).padStart(2, "0");
+      clockEl.textContent = `${h}:${m}:${s}`;
+    }
+    setInterval(atualizarRelogio, 1000);
+    atualizarRelogio();
+
+    // Elementos comuns
+    const chronoEl = document.getElementById("chronoTime");
+    const labelModoEl = document.getElementById("labelModo");
+    const alertFimEl = document.getElementById("alertFim");
+    const btnStart = document.getElementById("btnStart");
+    const btnPause = document.getElementById("btnPause");
+    const btnReset = document.getElementById("btnReset");
+    const btnModoChrono = document.getElementById("btnModoChrono");
+    const btnModoTimer = document.getElementById("btnModoTimer");
+    const inputMinutosTimer = document.getElementById("inputMinutosTimer");
+
+    // Áudio simples de beep (Web Audio API)
+    function tocarBeep(vezes = 5, intervalo = 350) {
+      let count = 0;
+      function beep() {
+        try {
+          const ctx = new (window.AudioContext || window.webkitAudioContext)();
+          const osc = ctx.createOscillator();
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(880, ctx.currentTime);
+          osc.connect(ctx.destination);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.2);
+        } catch (e) {
+          console.log("Beep não suportado neste navegador.");
+        }
+        count++;
+        if (count < vezes) setTimeout(beep, intervalo);
+      }
+      beep();
+    }
+
+    // Estados gerais
+    let modo = "chrono"; // "chrono" ou "timer"
+    let intervalo = null;
+    let rodando = false;
+    let elapsedMs = 0;       // usado no cronômetro
+    let timerTotalMs = parseInt(inputMinutosTimer.value, 10) * 60 * 1000;
+    let timerRestanteMs = timerTotalMs;
+
+    function formatarMs(ms) {
+      ms = Math.max(0, ms);
+      const totalCent = Math.floor(ms / 10);
+      const cent = String(totalCent % 100).padStart(2, "0");
+      const totalSeconds = Math.floor(ms / 1000);
+      const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, "0");
+      const seconds = String(totalSeconds % 60).padStart(2, "0");
+      return `${minutes}:${seconds}:${cent}`;
+    }
+
+    function renderTempo() {
+      if (modo === "chrono") {
+        chronoEl.textContent = formatarMs(elapsedMs);
+      } else {
+        chronoEl.textContent = formatarMs(timerRestanteMs);
+      }
+    }
+
+    function limparIntervalo() {
+      clearInterval(intervalo);
+      intervalo = null;
+      rodando = false;
+    }
+
+    function start() {
+      if (rodando) return;
+      alertFimEl.textContent = "";
+      rodando = true;
+      let last = Date.now();
+      intervalo = setInterval(() => {
+        const now = Date.now();
+        const delta = now - last;
+        last = now;
+
+        if (modo === "chrono") {
+          elapsedMs += delta;
+          renderTempo();
+        } else {
+          timerRestanteMs -= delta;
+          if (timerRestanteMs <= 0) {
+            timerRestanteMs = 0;
+            renderTempo();
+            limparIntervalo();
+            alertFimEl.innerHTML = '<div id="fimCard" style="padding:18px 0;font-size:1.5rem;font-weight:bold;background:#ff5252;color:#fff;border-radius:10px;box-shadow:0 2px 16px #000a;margin:10px 0;animation:fimPisca 1s steps(2, start) infinite;">FIM DO TEMPO!</div>';
+            tocarBeep(5, 350); // aviso sonoro 5x
+            // Animação para o card piscando
+            const stylePisca = document.createElement('style');
+            stylePisca.innerHTML = `@keyframes fimPisca { 0%{opacity:1;} 50%{opacity:0.2;} 100%{opacity:1;} }`;
+            document.head.appendChild(stylePisca);
+          } else {
+            renderTempo();
+          }
+        }
+      }, 100);
+    }
+
+    function pause() {
+      limparIntervalo();
+    }
+
+    function reset() {
+      limparIntervalo();
+      alertFimEl.textContent = "";
+      if (modo === "chrono") {
+        elapsedMs = 0;
+      } else {
+        timerTotalMs = parseInt(inputMinutosTimer.value, 10) * 60 * 1000;
+        timerRestanteMs = timerTotalMs;
+      }
+      renderTempo();
+    }
+
+    // Alternar modos
+    function setModoChrono() {
+      modo = "chrono";
+      btnModoChrono.classList.add("active");
+      btnModoTimer.classList.remove("active");
+      labelModoEl.textContent = "Cronômetro do racha";
+      elapsedMs = 0;
+      limparIntervalo();
+      alertFimEl.textContent = "";
+      renderTempo();
+    }
+
+    function setModoTimer() {
+      modo = "timer";
+      btnModoTimer.classList.add("active");
+      btnModoChrono.classList.remove("active");
+      labelModoEl.textContent = `Timer – ${inputMinutosTimer.value} minutos`;
+      timerTotalMs = parseInt(inputMinutosTimer.value, 10) * 60 * 1000;
+      timerRestanteMs = timerTotalMs;
+      limparIntervalo();
+      alertFimEl.textContent = "";
+      renderTempo();
+    }
+
+    inputMinutosTimer.addEventListener("change", () => {
+      if (modo === "timer") {
+        timerTotalMs = parseInt(inputMinutosTimer.value, 10) * 60 * 1000;
+        timerRestanteMs = timerTotalMs;
+        labelModoEl.textContent = `Timer – ${inputMinutosTimer.value} minutos`;
+        renderTempo();
+      }
+    });
+
+    btnModoChrono.addEventListener("click", setModoChrono);
+    btnModoTimer.addEventListener("click", setModoTimer);
+
+    btnStart.addEventListener("click", start);
+    btnPause.addEventListener("click", pause);
+    btnReset.addEventListener("click", reset);
+
+    // Inicializa com cronômetro
+    renderTempo();
+
+    // Placar [web:113][web:116]
+    const score1El = document.getElementById("score1");
+    const score2El = document.getElementById("score2");
+    const t1Mais = document.getElementById("t1Mais");
+    const t1Menos = document.getElementById("t1Menos");
+    const t2Mais = document.getElementById("t2Mais");
+    const t2Menos = document.getElementById("t2Menos");
+
+    let score1 = 0;
+    let score2 = 0;
+
+    function renderScores() {
+      score1El.textContent = score1;
+      score2El.textContent = score2;
+    }
+
+    t1Mais.addEventListener("click", () => {
+      score1++;
+      renderScores();
+    });
+
+    t1Menos.addEventListener("click", () => {
+      if (score1 > 0) score1--;
+      renderScores();
+    });
+
+    t2Mais.addEventListener("click", () => {
+      score2++;
+      renderScores();
+    });
+
+    t2Menos.addEventListener("click", () => {
+      if (score2 > 0) score2--;
+      renderScores();
+    });
+
+    renderScores();
+  </script>
+</body>
+</html>

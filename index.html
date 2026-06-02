@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Goleio - Comunidade do Racha</title>
+  <meta name="theme-color" content="#050505" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+
+  <link rel="icon" type="image/png" sizes="48x48" href="assets/logos/favicon-48x48.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/logos/apple-touch-icon.png" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="toast" class="toast hidden"></div>
+  <div id="globalProgress" class="global-progress hidden"><span></span></div>
+  <div id="appLoader" class="app-loader hidden">
+    <div class="loader-card">
+      <img src="assets/logos/goleio-icon-192.png" alt="Goleio" />
+      <strong>Goleio</strong>
+      <span>Carregando seu racha...</span>
+      <div class="loader-bar"><i></i></div>
+    </div>
+  </div>
+
+  <section id="authView" class="auth-shell">
+    <div class="auth-card glass-card">
+      <div class="brand-block">
+        <div class="brand-logo"><img src="assets/logos/goleio-icon-192.png" alt="Logo Goleio"></div>
+        <div>
+          <p class="eyebrow">Comunidade do racha</p>
+          <h1>Goleio</h1>
+          <p class="muted">Times justos, cartinhas, avaliações e presença do seu futebol.</p>
+        </div>
+      </div>
+
+      <div class="auth-tabs">
+        <button id="tabLogin" class="tab-btn active" type="button">Entrar</button>
+        <button id="tabRegister" class="tab-btn" type="button">Criar conta</button>
+      </div>
+
+      <form id="loginForm" class="auth-form">
+        <label>Email</label>
+        <input id="loginEmail" type="email" placeholder="seu@email.com" autocomplete="email" required />
+
+        <label for="loginPassword">Senha</label>
+        <div class="password-field">
+          <input id="loginPassword" type="password" placeholder="Sua senha" autocomplete="current-password" required />
+          <button class="password-toggle" type="button" data-action="toggle-password" data-target="loginPassword" aria-label="Mostrar senha">
+            <i data-lucide="eye"></i>
+          </button>
+        </div>
+
+        <button class="btn-primary" type="submit">
+          <i data-lucide="log-in"></i>
+          Entrar no Goleio
+        </button>
+      </form>
+
+      <section id="quickToolsBlock" class="quick-tools-block login-only">
+        <div class="quick-tools-head">
+          <p class="eyebrow">Ferramentas rápidas</p>
+          <h3>Use sem entrar</h3>
+          <p class="muted">Para quem quer só usar as ferramentas do dia a dia do racha.</p>
+        </div>
+        <div class="quick-tools-grid">
+          <a class="tool-link-card" href="sorteador-rapido.html">
+            <span class="tool-link-icon"><i data-lucide="shuffle"></i></span>
+            <span><strong>Sorteador rápido</strong><small>Monte times sem login</small></span>
+          </a>
+          <a class="tool-link-card" href="cronometro-placar.html">
+            <span class="tool-link-icon"><i data-lucide="timer-reset"></i></span>
+            <span><strong>Cronômetro e placar</strong><small>Abra a ferramenta rápida do jogo</small></span>
+          </a>
+        </div>
+      </section>
+
+      <form id="registerForm" class="auth-form hidden">
+        <div class="grid-2">
+          <div>
+            <label>Nome</label>
+            <input id="registerNome" type="text" placeholder="Seu nome" required />
+          </div>
+          <div>
+            <label>Apelido</label>
+            <input id="registerApelido" type="text" placeholder="Ex: Canhota" />
+          </div>
+        </div>
+
+        <label for="registerUsername">Usuário único</label>
+        <div class="username-field">
+          <span>@</span>
+          <input id="registerUsername" type="text" inputmode="text" maxlength="30" placeholder="davidcbcampos" autocomplete="off" required />
+        </div>
+        <p id="registerUsernameStatus" class="field-help username-status neutral">Use letras, números, ponto ou underline. Ex: @davidcbcampos</p>
+
+        <label for="registerTelefone">WhatsApp</label>
+        <input id="registerTelefone" type="tel" inputmode="numeric" maxlength="15" placeholder="(34) 99999-9999" autocomplete="tel-national" />
+
+        <label>Posição principal</label>
+        <select id="registerPosicaoDetalhada">
+          <option value="goleiro">Goleiro</option>
+          <option value="zagueiro">Zagueiro</option>
+          <option value="lateral_direito">Lateral Direito</option>
+          <option value="lateral_esquerdo">Lateral Esquerdo</option>
+          <option value="volante">Volante</option>
+          <option value="meia_armador" selected>Meia Armador</option>
+          <option value="meia_lateral">Meia Lateral</option>
+          <option value="ponta_direita">Ponta Direita</option>
+          <option value="ponta_esquerda">Ponta Esquerda</option>
+          <option value="atacante">Atacante</option>
+          <option value="centroavante">Centroavante</option>
+        </select>
+        <p class="field-help">Depois, em cada racha, você confirma a posição correta da modalidade.</p>
+
+        <label>Email</label>
+        <input id="registerEmail" type="email" placeholder="seu@email.com" autocomplete="email" required />
+
+        <label for="registerPassword">Senha</label>
+        <div class="password-field">
+          <input id="registerPassword" type="password" placeholder="Mínimo 6 caracteres" autocomplete="new-password" minlength="6" required />
+          <button class="password-toggle" type="button" data-action="toggle-password" data-target="registerPassword" aria-label="Mostrar senha">
+            <i data-lucide="eye"></i>
+          </button>
+        </div>
+
+        <button class="btn-primary" type="submit">
+          <i data-lucide="user-plus"></i>
+          Criar minha conta
+        </button>
+      </form>
+    </div>
+  </section>
+
+  <section id="appView" class="app-shell hidden">
+    <aside class="sidebar glass-card">
+      <div class="side-brand">
+        <div class="brand-logo small"><img src="assets/logos/goleio-icon-192.png" alt="Logo Goleio"></div>
+        <div>
+          <strong>Goleio</strong>
+          <span>Racha premium</span>
+        </div>
+      </div>
+
+      <nav class="side-nav">
+        <button data-view="dashboard" class="nav-btn active"><i data-lucide="layout-dashboard"></i> Início</button>
+        <button data-view="perfil" class="nav-btn"><i data-lucide="id-card"></i> Meu perfil</button>
+        <button data-view="racha" class="nav-btn"><i data-lucide="shield"></i> Racha</button>
+        <button data-view="presenca" class="nav-btn"><i data-lucide="calendar-check"></i> Presença</button>
+        <button data-view="ranking" class="nav-btn"><i data-lucide="trophy"></i> Ranking</button>
+        <button data-view="sorteio" class="nav-btn"><i data-lucide="shuffle"></i> Sorteio</button>
+      </nav>
+
+      <button id="logoutBtn" class="btn-ghost danger"><i data-lucide="log-out"></i> Sair</button>
+    </aside>
+
+    <main class="main-area">
+      <header class="topbar glass-card">
+        <div>
+          <p class="eyebrow" id="topEyebrow">Bem-vindo</p>
+          <h2 id="topTitle">Carregando...</h2>
+        </div>
+        <div class="topbar-actions">
+          <div class="active-racha-pill" id="activeRachaPill">Nenhum racha ativo</div>
+          <button id="mobileLogoutBtn" class="top-icon-btn" type="button" aria-label="Sair"><i data-lucide="log-out"></i></button>
+        </div>
+      </header>
+
+      <section id="content" class="content-area"></section>
+    </main>
+  </section>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
