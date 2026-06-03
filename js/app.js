@@ -7,7 +7,7 @@
 
 const SUPABASE_URL = window.GOLEIO_SUPABASE_URL;
 const SUPABASE_ANON_KEY = window.GOLEIO_SUPABASE_ANON_KEY;
-const GOLEIO_APP_VERSION = '52.0.0';
+const GOLEIO_APP_VERSION = '56.0.0';
 
 let sb = null;
 
@@ -672,6 +672,99 @@ function overallFromSkills(row = {}, fallback = 60) {
   return averageNumbers(cardSkillRows(row).map((skill) => skill.value), fallback);
 }
 
+const POSITION_WEIGHT_PROFILES = {
+  goleiro: { finalizacao: 0.02, passe: 0.10, velocidade: 0.05, drible: 0.05, hab_defensiva: 0.20, hab_ofensiva: 0.03, hab_goleiro: 0.55 },
+  defesa: { finalizacao: 0.05, passe: 0.20, velocidade: 0.15, drible: 0.10, hab_defensiva: 0.40, hab_ofensiva: 0.08, hab_goleiro: 0.02 },
+  lateral_ala: { finalizacao: 0.05, passe: 0.20, velocidade: 0.25, drible: 0.18, hab_defensiva: 0.17, hab_ofensiva: 0.15, hab_goleiro: 0.00 },
+  meio: { finalizacao: 0.10, passe: 0.30, velocidade: 0.12, drible: 0.22, hab_defensiva: 0.06, hab_ofensiva: 0.20, hab_goleiro: 0.00 },
+  ataque: { finalizacao: 0.30, passe: 0.10, velocidade: 0.15, drible: 0.15, hab_defensiva: 0.05, hab_ofensiva: 0.25, hab_goleiro: 0.00 },
+  linha: { finalizacao: 0.16, passe: 0.18, velocidade: 0.16, drible: 0.16, hab_defensiva: 0.16, hab_ofensiva: 0.18, hab_goleiro: 0.00 }
+};
+
+function normalizePositionKey(posicao) {
+  return String(posicao || '').trim().toLowerCase();
+}
+
+function positionWeightGroup(posicao, tipo = '') {
+  const p = normalizePositionKey(posicao);
+  const t = normalizePositionKey(tipo);
+  if (p === 'goleiro' || t === 'goleiro') return 'goleiro';
+  if (['zagueiro', 'fixo', 'volante'].includes(p)) return 'defesa';
+  if (['lateral', 'lateral_direito', 'lateral_esquerdo', 'ala', 'ala_direita', 'ala_esquerda', 'ala_direito', 'ala_esquerdo', 'meia_lateral'].includes(p)) return 'lateral_ala';
+  if (['meia', 'meia_armador'].includes(p)) return 'meio';
+  if (['ponta_direita', 'ponta_esquerda', 'atacante', 'centroavante', 'pivo'].includes(p)) return 'ataque';
+  return 'linha';
+}
+
+function rowPosition(row = {}, profile = null) {
+  return row?.posicao_detalhada
+    || row?.posicao
+    || profile?.posicao_detalhada
+    || profile?.posicao
+    || profile?.posicao_tipo
+    || '';
+}
+
+function weightedOverallFromSkills(row = {}, profile = null, fallback = 60) {
+  if (!row) return fallback;
+  const skills = {
+    finalizacao: getSkillValue(row, 'media_finalizacao', fallback),
+    passe: getSkillValue(row, 'media_passe', fallback),
+    velocidade: getSkillValue(row, 'media_velocidade', fallback),
+    drible: getSkillValue(row, 'media_drible', fallback),
+    hab_defensiva: getSkillValue(row, ['media_hab_defensiva', 'media_marcacao'], fallback),
+    hab_ofensiva: getOffensiveSkill(row, fallback),
+    hab_goleiro: getSkillValue(row, ['media_hab_goleiro', 'media_goleiro'], fallback)
+  };
+  const group = positionWeightGroup(rowPosition(row, profile), row?.posicao_tipo || profile?.posicao_tipo);
+  const weights = POSITION_WEIGHT_PROFILES[group] || POSITION_WEIGHT_PROFILES.linha;
+  const score = Object.entries(weights).reduce((sum, [key, weight]) => sum + skills[key] * weight, 0);
+  return Math.round(Math.max(60, Math.min(99, score)));
+}
+
+function rowHasVotes(row = {}) {
+  return Number(row?.total_avaliacoes || 0) > 0;
+}
+
+function overallForRow(row = {}, profile = null, fallback = 60) {
+  if (!rowHasVotes(row) && !row?.media_finalizacao && !row?.media_passe) return fallback;
+  return weightedOverallFromSkills(row, profile, fallback);
+}
+
+function getPositionFamily(row = {}, profile = null) {
+  return positionWeightGroup(rowPosition(row, profile), row?.posicao_tipo || profile?.posicao_tipo);
+}
+
+function rankingAllowedForMode(row = {}, mode = state.rankingMode || 'geral') {
+  if (!row) return false;
+  const p = normalizePositionKey(rowPosition(row));
+  const family = getPositionFamily(row);
+  if (mode === 'geral') return true;
+  if (mode === 'goleiro') return family === 'goleiro' || p === 'goleiro';
+  if (mode === 'defesa') return ['defesa', 'lateral_ala'].includes(family);
+  if (mode === 'ataque' || mode === 'finalizacao') return ['ataque', 'meio', 'lateral_ala'].includes(family);
+  if (mode === 'passe') return family !== 'goleiro';
+  if (mode === 'velocidade' || mode === 'drible') return family !== 'goleiro';
+  return true;
+}
+
+function filterRankingRows(rows = [], mode = state.rankingMode || 'geral') {
+  return rows.filter((row) => rankingAllowedForMode(row, mode));
+}
+
+function enrichRankingRowWithMembership(row = {}) {
+  const member = state.members?.find((m) => m.user_id === row.jogador_id);
+  if (!member) return row;
+  const p = Array.isArray(member.profiles) ? member.profiles[0] : member.profiles;
+  return {
+    ...row,
+    posicao_tipo: member.posicao_tipo || row.posicao_tipo || p?.posicao_tipo || row.posicao,
+    posicao_detalhada: member.posicao_detalhada || row.posicao_detalhada || p?.posicao_detalhada || p?.posicao || row.posicao,
+    posicao_setor: member.posicao_setor || row.posicao_setor || p?.posicao_setor || positionSector(member.posicao_detalhada || p?.posicao_detalhada || p?.posicao || row.posicao),
+    username: row.username || p?.username || null
+  };
+}
+
 function cardLabel(value, fallback = 'Equilibrado') {
   const text = String(value || '').trim();
   if (!text || text === 'nao_informado') return fallback;
@@ -1297,7 +1390,8 @@ async function loadRachaData() {
   if (!state.selectedDate || !isMatchingRachaDay(state.selectedDate, state.activeRacha) || isDateCancelled(state.selectedDate)) {
     state.selectedDate = getDefaultGameDate(state.activeRacha);
   }
-  await Promise.all([loadMembers(), loadRanking(), loadPresencas(state.selectedDate), loadLatestSorteios()]);
+  await loadMembers();
+  await Promise.all([loadRanking(), loadPresencas(state.selectedDate), loadLatestSorteios()]);
 }
 
 async function loadMembers() {
@@ -1353,7 +1447,7 @@ async function loadRanking() {
     state.ranking = [];
     return;
   }
-  state.ranking = data || [];
+  state.ranking = (data || []).map(enrichRankingRowWithMembership);
 }
 
 
@@ -1471,6 +1565,7 @@ function renderContentSkeleton(view = state.currentView) {
 
 function renderApp() {
   document.documentElement.dataset.goleioVersion = GOLEIO_APP_VERSION;
+  document.documentElement.dataset.goleioView = state.currentView || 'dashboard';
   saveUiState();
   normalizeCurrentView();
   const profileName = state.profile?.apelido || state.profile?.nome || 'Jogador';
@@ -2121,7 +2216,7 @@ function option(value, label, selected) {
 
 function getMyAverage() {
   const mine = state.ranking.find((r) => r.jogador_id === state.user?.id);
-  return mine?.media_geral || null;
+  return mine ? overallForRow(mine) : null;
 }
 
 function getMyRachaRanking() {
@@ -2129,7 +2224,9 @@ function getMyRachaRanking() {
 }
 
 function getProfileCardAverage() {
-  return state.globalRanking?.media_geral || getMyRachaRanking()?.media_geral || null;
+  const active = getMyRachaRanking();
+  if (state.globalRanking?.media_geral) return overallScore(state.globalRanking.media_geral);
+  return active ? overallForRow(active, getMyRachaProfile()) : null;
 }
 
 function getProfileCardAttrs() {
@@ -2139,7 +2236,7 @@ function getProfileCardAttrs() {
 function renderProfileRatingOverview() {
   const global = state.globalRanking;
   const activeRow = getMyRachaRanking();
-  const activeOverall = activeRow?.media_geral ? overallScore(activeRow.media_geral) : null;
+  const activeOverall = activeRow ? overallForRow(activeRow, getMyRachaProfile()) : null;
   const globalOverall = global?.media_geral ? overallScore(global.media_geral) : null;
   const rows = state.ratingsByRacha || [];
   const totalRachas = Number(global?.total_rachas || rows.length || state.memberships?.filter((m) => m.status === 'ativo').length || 0);
@@ -2586,7 +2683,7 @@ async function drawGoleioStoryCanvas(canvas) {
   const p = getMyRachaProfile();
   const average = getProfileCardAverage();
   const attrs = getProfileCardAttrs() || {};
-  const overall = average ? overallScore(average) : overallFromSkills(attrs, 60);
+  const overall = average ? overallScore(average) : overallForRow(attrs, p);
   const skills = cardSkillRows(attrs);
   const pos = positionCode(p?.posicao_detalhada || p?.posicao);
   const name = (p?.apelido || p?.nome || 'Jogador').toUpperCase();
@@ -3397,7 +3494,7 @@ function renderPlayerModal(userId) {
   if (!member) return '';
   const p = mergeMemberProfile(member);
   const rank = state.ranking.find((r) => r.jogador_id === userId);
-  const overall = rank?.media_geral ? overallScore(rank.media_geral) : 60;
+  const overall = rank ? overallForRow(rank, p) : 60;
   const skills = [
     ['Finalização', rank?.media_finalizacao],
     ['Passe', rank?.media_passe],
@@ -3412,7 +3509,7 @@ function renderPlayerModal(userId) {
         <button class="modal-close" data-action="close-modal" aria-label="Fechar"><i data-lucide="x"></i></button>
         <div class="fifa-modal-grid">
           <div class="fifa-modal-card-area">
-            ${renderPlayerCard(p, rank?.media_geral, rank)}
+            ${renderPlayerCard(p, rank ? overallForRow(rank, p) : null, rank)}
           </div>
           <div class="fifa-modal-info">
             <p class="eyebrow">Perfil do jogador</p>
@@ -3579,7 +3676,7 @@ function renderPresenceList() {
 }
 
 function rankingOverall(row) {
-  return row?.media_geral ? overallScore(row.media_geral) : overallFromSkills(row);
+  return overallForRow(row);
 }
 
 function attrOverall(value) {
@@ -3609,14 +3706,14 @@ function buildRankingProfile(row) {
 
 function rankingModeInfo(mode = state.rankingMode || 'geral') {
   const modes = {
-    geral: { label: 'Geral', short: 'OVR', icon: 'trophy', help: 'Classificação geral por overall.' },
+    geral: { label: 'Geral', short: 'OVR', icon: 'trophy', help: 'Overall ponderado pela posição do jogador.' },
     finalizacao: { label: 'Finalização', short: 'FIN', icon: 'target', help: 'Ranking por finalização.' },
     passe: { label: 'Passe', short: 'PAS', icon: 'send', help: 'Ranking por qualidade de passe.' },
     velocidade: { label: 'Velocidade', short: 'VEL', icon: 'zap', help: 'Ranking por velocidade.' },
     drible: { label: 'Drible', short: 'DRI', icon: 'footprints', help: 'Ranking por drible.' },
-    defesa: { label: 'Defensiva', short: 'DEF', icon: 'shield', help: 'Ranking por habilidade defensiva.' },
-    ataque: { label: 'Ofensiva', short: 'ATA', icon: 'flame', help: 'Ranking por habilidade ofensiva.' },
-    goleiro: { label: 'Goleiro', short: 'GOL', icon: 'hand', help: 'Ranking por habilidade de goleiro.' }
+    defesa: { label: 'Defensiva', short: 'DEF', icon: 'shield', help: 'Filtra jogadores de defesa/laterais e ordena pela defesa.' },
+    ataque: { label: 'Ofensiva', short: 'ATA', icon: 'flame', help: 'Filtra jogadores ofensivos e ordena pela habilidade ofensiva.' },
+    goleiro: { label: 'Goleiro', short: 'GOL', icon: 'hand', help: 'Mostra apenas jogadores definidos como goleiros.' }
   };
   return modes[mode] || modes.geral;
 }
@@ -3624,7 +3721,6 @@ function rankingModeInfo(mode = state.rankingMode || 'geral') {
 function rankingMetricScore(row, mode = state.rankingMode || 'geral') {
   if (!row) return 60;
   const map = {
-    geral: 'media_geral',
     finalizacao: 'media_finalizacao',
     passe: 'media_passe',
     velocidade: 'media_velocidade',
@@ -3632,15 +3728,17 @@ function rankingMetricScore(row, mode = state.rankingMode || 'geral') {
     defesa: 'media_hab_defensiva',
     goleiro: 'media_hab_goleiro'
   };
+  if (mode === 'geral') return overallForRow(row);
   if (mode === 'ataque') return getOffensiveSkill(row);
   if (mode === 'defesa') return getSkillValue(row, ['media_hab_defensiva', 'media_marcacao']);
   if (mode === 'goleiro') return getSkillValue(row, ['media_hab_goleiro', 'media_goleiro']);
-  const key = map[mode] || 'media_geral';
-  return row?.[key] ? normalizeSkillScore(row[key]) : (mode === 'geral' ? overallFromSkills(row) : 60);
+  const key = map[mode];
+  return row?.[key] ? normalizeSkillScore(row[key]) : 60;
 }
 
 function sortedRankingRows(rows, mode = state.rankingMode || 'geral') {
-  return [...rows].sort((a, b) => rankingMetricScore(b, mode) - rankingMetricScore(a, mode) || Number(b.total_avaliacoes || 0) - Number(a.total_avaliacoes || 0));
+  return filterRankingRows(rows, mode)
+    .sort((a, b) => rankingMetricScore(b, mode) - rankingMetricScore(a, mode) || Number(b.total_avaliacoes || 0) - Number(a.total_avaliacoes || 0));
 }
 
 function renderRankingTabs() {
@@ -3805,8 +3903,21 @@ function renderRanking() {
 
   const mode = state.rankingMode || 'geral';
   const rows = sortedRankingRows(state.ranking, mode);
+  if (!rows.length) {
+    const info = rankingModeInfo(mode);
+    return `
+      <section class="ranking-pro ranking-premium-page">
+        ${renderRankingTabs()}
+        <div class="ranking-empty card">
+          <div class="empty-icon"><i data-lucide="filter"></i></div>
+          <h3>Nenhum jogador para ${safe(info.label)}</h3>
+          <p class="muted">Esse filtro considera a posição cadastrada no racha. Confira se os jogadores já completaram a posição correta.</p>
+        </div>
+      </section>
+    `;
+  }
   const totalVotes = state.ranking.reduce((sum, row) => sum + Number(row.total_avaliacoes || 0), 0);
-  const avgOverall = Math.round(state.ranking.reduce((sum, row) => sum + rankingOverall(row), 0) / state.ranking.length);
+  const avgOverall = Math.round(rows.reduce((sum, row) => sum + rankingOverall(row), 0) / rows.length);
   const leader = rows[0];
   const info = rankingModeInfo(mode);
 
@@ -3877,32 +3988,37 @@ function teamsToHTML(teams = []) {
   if (!Array.isArray(teams) || !teams.length) {
     return '<p class="muted">Nenhum time salvo neste sorteio.</p>';
   }
+  const activeTeams = teams.filter((team) => !team.isWaiting);
+  const waitingTeams = teams.filter((team) => team.isWaiting);
   return `
     <div class="draw-results-head">
       <div><p class="eyebrow">Resultado</p><h3>Times sorteados</h3></div>
-      <span>${teams.length} time(s)</span>
+      <span>${activeTeams.length || teams.length} time(s)</span>
     </div>
     ${teams.map((team) => {
       const total = Number(team.total || 0);
       const avg = team.players?.length ? (total / team.players.length) : 0;
+      const isWaiting = Boolean(team.isWaiting);
       return `
-        <div class="team-card team-card-pro">
+        <div class="team-card team-card-pro ${isWaiting ? 'team-card-waiting' : ''}">
           <div class="team-card-head">
-            <div><span>${safe(team.name || 'Time')}</span><strong>Média ${avg ? avg.toFixed(2) : '-'}</strong></div>
+            <div><span>${safe(team.name || 'Time')}</span><strong>${isWaiting ? 'Banco / próximo' : `Média ${avg ? avg.toFixed(1) : '-'}`}</strong></div>
             <b>${team.players?.length || 0}</b>
           </div>
+          ${team.warning ? `<div class="team-warning"><i data-lucide="triangle-alert"></i><span>${safe(team.warning)}</span></div>` : ''}
           <ul>
             ${(team.players || []).map((p) => `
               <li>
                 <span class="team-player-icon">${p.isGoalkeeper ? '🧤' : '⚽'}</span>
-                <span class="team-player-name">${safe(p.name || 'Jogador')}<small>${safe(positionCode(p.posicao_detalhada || p.posicao || p.posicao_tipo))}</small></span>
-                <strong>${Number(p.score || 0).toFixed(1)}</strong>
+                <span class="team-player-name">${safe(p.name || 'Jogador')}<small>${safe(positionCode(p.posicao_detalhada || p.posicao || p.posicao_tipo))}${p.lineAsGoalkeeper ? ' • completa linha' : ''}</small></span>
+                <strong>${Number(p.score || 0).toFixed(0)}</strong>
               </li>
             `).join('')}
           </ul>
         </div>
       `;
     }).join('')}
+    ${waitingTeams.length ? '<p class="field-help draw-waiting-help">Jogadores na espera entram conforme a dinâmica do racha.</p>' : ''}
   `;
 }
 
@@ -3946,6 +4062,38 @@ function renderUltimoSorteio() {
   `;
 }
 
+function estimateDrawTeamsCount(playerCount, perTeam) {
+  const size = Math.max(1, Number(perTeam || 5));
+  const count = Number(playerCount || 0);
+  if (count < 2) return 0;
+  if (count < size * 2) return 2;
+  return Math.max(2, Math.floor(count / size));
+}
+
+function memberIsGoalkeeperLike(member) {
+  const profile = mergeMemberProfile(member);
+  const detailed = profile?.posicao_detalhada || profile?.posicao || null;
+  const type = profile?.posicao_tipo || profile?.posicao || (detailed === 'goleiro' ? 'goleiro' : 'linha');
+  return ['goleiro', 'ambos'].includes(type) || detailed === 'goleiro';
+}
+
+function confirmedActiveMembersForSelectedDate() {
+  const confirmedIds = new Set([...activePresenceMap().entries()].filter(([, p]) => p.status === 'confirmado').map(([userId]) => userId));
+  return state.members.filter((m) => m.status === 'ativo' && confirmedIds.has(m.user_id));
+}
+
+function drawWarningsHTML(confirmed, perTeam, estimatedTeams, goalkeeperCount) {
+  const warnings = [];
+  if (estimatedTeams > 0 && goalkeeperCount < estimatedTeams) {
+    warnings.push(`Há ${goalkeeperCount} goleiro(s) para ${estimatedTeams} time(s). Time sem goleiro fixo será completado com jogadores de linha.`);
+  }
+  if (estimatedTeams > 0 && confirmed > estimatedTeams * perTeam) {
+    warnings.push(`${confirmed - (estimatedTeams * perTeam)} jogador(es) ficarão na espera/próximo.`);
+  }
+  if (!warnings.length) return '';
+  return `<div class="draw-rule-alerts">${warnings.map((w) => `<div class="pro-alert info"><i data-lucide="info"></i><span>${safe(w)}</span></div>`).join('')}</div>`;
+}
+
 function renderSorteio() {
   if (!state.activeRacha) return requireActiveRachaHTML('Sorteio indisponível');
   if (!isAdmin()) return renderUltimoSorteio();
@@ -3953,10 +4101,12 @@ function renderSorteio() {
   const nextDate = getDefaultGameDate(state.activeRacha);
   if (state.selectedDate !== nextDate) state.selectedDate = nextDate;
 
-  const confirmed = getPresenceStatsForActiveMembers().confirmado;
+  const confirmedMembers = confirmedActiveMembersForSelectedDate();
+  const confirmed = confirmedMembers.length;
   const enough = confirmed >= 2;
   const perTeam = Number(state.activeRacha.jogadores_por_time || 5);
-  const estimatedTeams = enough ? Math.max(1, Math.ceil(confirmed / perTeam)) : 0;
+  const estimatedTeams = enough ? estimateDrawTeamsCount(confirmed, perTeam) : 0;
+  const goalkeeperCount = confirmedMembers.filter(memberIsGoalkeeperLike).length;
   const selectedMode = selectedDrawMode();
   const modeDescriptions = {
     equilibrado: 'Distribui pela nota média para deixar os times parelhos.',
@@ -3986,11 +4136,13 @@ function renderSorteio() {
             <h3><i data-lucide="calendar-days"></i> ${formatDateBR(nextDate)}</h3>
             <p class="muted">O sorteio usa apenas o próximo jogo programado dessa comunidade.</p>
           </div>
-          <div class="next-game-stats">
+          <div class="next-game-stats draw-next-game-stats">
             <div><span>Confirmados</span><strong>${confirmed}</strong></div>
             <div><span>Times</span><strong>${estimatedTeams || '-'}</strong></div>
             <div><span>Por time</span><strong>${safe(perTeam)}</strong></div>
+            <div><span>Goleiros</span><strong>${goalkeeperCount}</strong></div>
           </div>
+          ${drawWarningsHTML(confirmed, perTeam, estimatedTeams, goalkeeperCount)}
         </div>
 
         ${!enough ? `
@@ -4013,11 +4165,12 @@ function renderSorteio() {
           </div>
         </div>
 
-        <div class="form-actions sorteio-actions sticky-actions">
-          <button class="btn-primary" data-action="generate-teams"><i data-lucide="sparkles"></i> Gerar times</button>
-          <button class="btn-secondary" data-action="copy-teams"><i data-lucide="send"></i> Copiar WhatsApp</button>
+        <div class="form-actions sorteio-actions draw-actions-safe">
+          <button class="btn-primary draw-main-button" data-action="generate-teams"><i data-lucide="sparkles"></i> Sortear times</button>
+          ${latestSorteio() || state.lastTeamsText ? `<button class="btn-secondary draw-copy-button" data-action="copy-teams"><i data-lucide="send"></i> Copiar WhatsApp</button>` : ''}
         </div>
-        <div id="teamsResult" class="team-result teams-result-pro"></div>
+        <div id="teamsResult" class="team-result teams-result-pro draw-result-area"></div>
+        <div class="bottom-safe-space"></div>
       </div>
     </section>
   `;
@@ -4028,7 +4181,7 @@ function renderEvaluationForm(userId) {
   if (!member) return '';
   const p = mergeMemberProfile(member);
   const rank = state.ranking.find((r) => r.jogador_id === userId) || {};
-  const overall = rank?.media_geral ? overallScore(rank.media_geral) : overallFromSkills(rank);
+  const overall = rank ? overallForRow(rank, p) : overallFromSkills(rank);
   const position = positionCode(p?.posicao_detalhada || p?.posicao);
   const existing = state.currentEvaluation?.avaliado_id === userId ? state.currentEvaluation : null;
 
@@ -4319,7 +4472,7 @@ async function handleClick(event) {
   if (action === 'open-evaluate') { closeModal(); await openEvaluate(actionEl.dataset.userId); }
   if (action === 'eval-rate') updateEvalRating(actionEl.dataset.key, Number(actionEl.dataset.value));
   if (action === 'eval-preset') applyEvalPreset(actionEl.dataset.preset);
-  if (action === 'generate-teams') await generateTeams(actionEl);
+  if (action === 'generate-teams') await handleGenerateTeams(actionEl);
   if (action === 'set-ranking-mode') { state.rankingMode = actionEl.dataset.mode || 'geral'; renderApp(); return; }
   if (action === 'copy-teams') await copyTeams();
 }
@@ -5211,147 +5364,102 @@ async function saveEvaluation(form, submitter = null) {
   }
 }
 
-function buildTeams(players, perTeam, mode) {
-  const totalTeams = Math.max(1, Math.ceil(players.length / Math.max(1, perTeam)));
-  const teams = Array.from({ length: totalTeams }, (_, i) => ({ name: `Time ${i + 1}`, players: [], total: 0 }));
-  const shuffled = shuffle([...players]);
-
-  if (mode === 'aleatorio') {
-    shuffled.forEach((player) => {
-      const target = teams.slice().sort((a, b) => a.players.length - b.players.length)[0];
-      target.players.push(player);
-      target.total += player.score;
-    });
-    return teams;
-  }
-
-  if (mode === 'posicoes') return buildTeamsByPosition(shuffled, teams, perTeam);
-
-  const goalkeepers = shuffled.filter((p) => p.isGoalkeeper).sort((a, b) => b.score - a.score);
-  const linePlayers = shuffled.filter((p) => !p.isGoalkeeper).sort((a, b) => b.score - a.score);
-
-  goalkeepers.forEach((player, index) => {
-    const target = teams[index % teams.length];
-    if (target.players.length < perTeam) {
-      target.players.push(player);
-      target.total += player.score;
-    } else {
-      linePlayers.push(player);
-    }
-  });
-
-  linePlayers.forEach((player) => {
-    const target = teams
-      .filter((team) => team.players.length < perTeam)
-      .sort((a, b) => a.total - b.total || a.players.length - b.players.length)[0] || teams[teams.length - 1];
-    target.players.push(player);
-    target.total += player.score;
-  });
-
-  return teams;
+function estimateDrawTeams(players, perTeam) {
+  return estimateDrawTeamsCount(players.length, perTeam);
 }
 
-async function generateTeams(button) {
-  if (!state.activeRacha) return;
-  if (!isAdmin()) {
-    toast('Apenas administradores podem gerar sorteios.');
-    return;
-  }
+function addPlayerToTeam(team, player) {
+  team.players.push(player);
+  team.total += Number(player.score || 0);
+}
 
-  setLoading(button, true, 'Sorteando...');
-  try {
-    const date = getDefaultGameDate(state.activeRacha);
-    state.selectedDate = date;
-    await loadPresencas(date);
-    await Promise.all([loadMembers(), loadRanking()]);
+function buildTeams(players, perTeam, mode) {
+  const size = Math.max(1, Number(perTeam || 5));
+  const totalTeams = estimateDrawTeams(players, size);
+  const teams = Array.from({ length: totalTeams }, (_, i) => ({ name: `Time ${i + 1}`, players: [], total: 0 }));
+  const warnings = [];
+  const waiting = [];
+  const shuffled = shuffle([...players]);
 
-    const perTeam = Number($('sorteioPorTime')?.value || state.activeRacha.jogadores_por_time || 5);
-    const mode = selectedDrawMode();
-    state.sorteioMode = mode;
-    const confirmedIds = new Set([...activePresenceMap().entries()].filter(([, p]) => p.status === 'confirmado').map(([userId]) => userId));
+  const goalkeepers = shuffled.filter((p) => p.isGoalkeeper).sort((a, b) => b.score - a.score);
+  let linePlayers = shuffled.filter((p) => !p.isGoalkeeper).sort((a, b) => b.score - a.score);
 
-    const players = state.members
-      .filter((m) => m.status === 'ativo' && confirmedIds.has(m.user_id))
-      .map((m) => {
-        const profile = mergeMemberProfile(m);
-        const rank = state.ranking.find((r) => r.jogador_id === m.user_id);
-        const score = Number(rank?.media_geral || 3);
-        const detailed = profile.posicao_detalhada || profile.posicao || null;
-        const type = profile.posicao_tipo || profile.posicao || (detailed === 'goleiro' ? 'goleiro' : 'linha');
-        return {
-          id: m.user_id,
-          name: profile.apelido || profile.nome || 'Jogador',
-          posicao: profile.posicao || 'linha',
-          posicao_tipo: type,
-          posicao_detalhada: detailed,
-          posicao_setor: profile.posicao_setor || positionSector(detailed),
-          score,
-          isGoalkeeper: ['goleiro', 'ambos'].includes(type) || detailed === 'goleiro'
-        };
-      });
-
-    if (players.length < 2) {
-      toast('Confirme pelo menos 2 jogadores para sortear.');
-      return;
+  goalkeepers.forEach((player, index) => {
+    if (index < teams.length) {
+      addPlayerToTeam(teams[index], player);
+    } else if (player.posicao_tipo === 'ambos') {
+      linePlayers.push({ ...player, isGoalkeeper: false, lineAsGoalkeeper: true });
+    } else {
+      waiting.push(player);
     }
+  });
 
-    const teams = buildTeams(players, perTeam, mode);
-    state.lastTeamsText = teamsToText(teams, mode, date);
-    renderTeams(teams);
-
-    const { error } = await sb.from('sorteios').insert({
-      racha_id: state.activeRacha.id,
-      criado_por: state.user.id,
-      modo: mode,
-      jogadores_por_time: perTeam,
-      resultado: teams
+  if (goalkeepers.length < teams.length) {
+    const missing = teams.length - goalkeepers.length;
+    warnings.push(`Faltou ${missing} goleiro(s). ${missing === 1 ? 'Um time ficará' : 'Alguns times ficarão'} sem goleiro fixo.`);
+    teams.forEach((team) => {
+      if (!team.players.some((p) => p.isGoalkeeper)) team.warning = 'Sem goleiro fixo';
     });
-    if (error) {
-      console.warn('Sorteio gerado, mas não salvo:', error.message);
-      toast('Times gerados, mas não consegui salvar o histórico.');
-      return;
-    }
-
-    await loadLatestSorteios();
-    toast('Times gerados!');
-  } catch (error) {
-    console.error(error);
-    toast(error.message || 'Erro ao gerar times. Tente novamente.');
-  } finally {
-    setLoading(button, false);
   }
+  if (goalkeepers.length > teams.length) {
+    const extra = goalkeepers.length - teams.length;
+    warnings.push(`${extra} goleiro(s) excedente(s). Quem for apenas goleiro fica na espera; quem é ambos pode completar linha.`);
+  }
+
+  const fillLinePlayers = (list) => {
+    list.forEach((player) => {
+      const candidates = teams.filter((team) => team.players.length < size);
+      if (!candidates.length) {
+        waiting.push(player);
+        return;
+      }
+      let target;
+      if (mode === 'aleatorio') {
+        target = candidates.sort((a, b) => a.players.length - b.players.length || Math.random() - .5)[0];
+      } else if (mode === 'posicoes') {
+        target = candidates.sort((a, b) => {
+          const aSameSector = a.players.filter((p) => p.posicao_setor === player.posicao_setor).length;
+          const bSameSector = b.players.filter((p) => p.posicao_setor === player.posicao_setor).length;
+          const aHasGk = a.players.some((p) => p.isGoalkeeper) ? 1 : 0;
+          const bHasGk = b.players.some((p) => p.isGoalkeeper) ? 1 : 0;
+          return aSameSector - bSameSector || aHasGk - bHasGk || a.total - b.total || a.players.length - b.players.length;
+        })[0];
+      } else {
+        target = candidates.sort((a, b) => a.total - b.total || a.players.length - b.players.length)[0];
+      }
+      addPlayerToTeam(target, player);
+    });
+  };
+
+  if (mode === 'posicoes') {
+    const ordered = [...linePlayers].sort((a, b) => b.score - a.score);
+    const groups = [
+      ordered.filter((p) => p.posicao_setor === 'defesa'),
+      ordered.filter((p) => p.posicao_setor === 'meio'),
+      ordered.filter((p) => p.posicao_setor === 'ataque'),
+      ordered.filter((p) => !['defesa', 'meio', 'ataque'].includes(p.posicao_setor))
+    ];
+    groups.forEach(fillLinePlayers);
+  } else if (mode === 'aleatorio') {
+    fillLinePlayers(shuffle(linePlayers));
+  } else {
+    fillLinePlayers(linePlayers.sort((a, b) => b.score - a.score));
+  }
+
+  teams.forEach((team) => {
+    if (!team.players.some((p) => p.isGoalkeeper)) team.warning ||= 'Sem goleiro fixo';
+  });
+
+  const result = teams;
+  if (waiting.length) {
+    result.push({ name: 'Espera / Próximo', players: waiting, total: waiting.reduce((sum, p) => sum + Number(p.score || 0), 0), isWaiting: true });
+  }
+  result.warnings = warnings;
+  return result;
 }
 
 function buildTeamsByPosition(players, teams, perTeam) {
-  const ordered = [...players].sort((a, b) => b.score - a.score);
-  const groups = {
-    gol: ordered.filter((p) => p.isGoalkeeper || p.posicao_setor === 'gol'),
-    defesa: ordered.filter((p) => !p.isGoalkeeper && p.posicao_setor === 'defesa'),
-    meio: ordered.filter((p) => !p.isGoalkeeper && p.posicao_setor === 'meio'),
-    ataque: ordered.filter((p) => !p.isGoalkeeper && p.posicao_setor === 'ataque'),
-    semSetor: ordered.filter((p) => !p.isGoalkeeper && (!['defesa', 'meio', 'ataque'].includes(p.posicao_setor)))
-  };
-
-  const distribute = (list) => {
-    list.forEach((player) => {
-      const target = teams
-        .filter((team) => team.players.length < perTeam)
-        .sort((a, b) => {
-          const aSameSector = a.players.filter((p) => p.posicao_setor === player.posicao_setor).length;
-          const bSameSector = b.players.filter((p) => p.posicao_setor === player.posicao_setor).length;
-          return aSameSector - bSameSector || a.total - b.total || a.players.length - b.players.length;
-        })[0] || teams[teams.length - 1];
-      target.players.push(player);
-      target.total += player.score;
-    });
-  };
-
-  distribute(groups.gol);
-  distribute(groups.defesa);
-  distribute(groups.meio);
-  distribute(groups.ataque);
-  distribute(groups.semSetor);
-  return teams;
+  return buildTeams(players, perTeam, 'posicoes');
 }
 
 function shuffle(array) {
@@ -5370,14 +5478,150 @@ function renderTeams(teams) {
 
 function teamsToText(teams, mode, date) {
   let text = `*GOLEIO* - Sorteio ${mode === 'posicoes' ? 'por posições' : mode === 'equilibrado' ? 'equilibrado' : 'aleatório'}\nData: ${date}\n\n`;
-  teams.forEach((team) => {
-    text += `🏆 ${team.name} - média ${team.players.length ? (team.total / team.players.length).toFixed(2) : '-'}\n`;
-    team.players.forEach((p) => {
-      text += `- ${p.isGoalkeeper ? '🧤' : '⚽'} ${p.name} (${positionCode(p.posicao_detalhada || p.posicao)})\n`;
+  const activeTeams = (teams || []).filter((team) => !team.isWaiting);
+  const waitingTeams = (teams || []).filter((team) => team.isWaiting);
+  activeTeams.forEach((team) => {
+    text += `🏆 ${team.name} - média ${team.players.length ? (team.total / team.players.length).toFixed(1) : '-'}${team.warning ? ` - ${team.warning}` : ''}\n`;
+    team.players.forEach((player) => {
+      text += `- ${player.isGoalkeeper ? '🧤' : '⚽'} ${player.name} (${positionCode(player.posicao_detalhada || player.posicao)})\n`;
+    });
+    text += '\n';
+  });
+  waitingTeams.forEach((team) => {
+    text += `⏳ ${team.name}\n`;
+    team.players.forEach((player) => {
+      text += `- ${player.isGoalkeeper ? '🧤' : '⚽'} ${player.name} (${positionCode(player.posicao_detalhada || player.posicao)})\n`;
     });
     text += '\n';
   });
   return text.trim();
+}
+
+
+function memberToDrawPlayer(member) {
+  const profile = mergeMemberProfile(member);
+  const rankingRow = state.ranking.find((row) => row.jogador_id === member.user_id) || {};
+  const detailed = member.posicao_detalhada || profile.posicao_detalhada || profile.posicao || null;
+  const tipo = member.posicao_tipo || profile.posicao_tipo || positionTypeFromDetailed(detailed);
+  return {
+    id: member.user_id,
+    member_id: member.id,
+    name: profile.apelido || profile.nome || 'Jogador',
+    username: profile.username || null,
+    posicao: detailed || tipo || 'linha',
+    posicao_detalhada: detailed || null,
+    posicao_tipo: tipo || 'linha',
+    posicao_setor: member.posicao_setor || profile.posicao_setor || positionSector(detailed),
+    score: overallForRow(rankingRow, profile, 60),
+    isGoalkeeper: memberIsGoalkeeperLike(member),
+    avatar_url: profile.avatar_url || null
+  };
+}
+
+function renderDrawSuspenseStep(step = 0) {
+  const steps = [
+    ['shuffle', 'Separando jogadores'],
+    ['goal', 'Distribuindo goleiros'],
+    ['shield', 'Equilibrando posições'],
+    ['sparkles', 'Montando times']
+  ];
+  const safeStep = Math.max(0, Math.min(step, steps.length - 1));
+  return `
+    <div class="draw-suspense-card">
+      <div class="draw-suspense-orb"><i data-lucide="${steps[safeStep][0]}"></i></div>
+      <strong>${safe(steps[safeStep][1])}</strong>
+      <span>Aguarde só um instante...</span>
+      <div class="draw-suspense-dots"><b></b><b></b><b></b></div>
+    </div>
+  `;
+}
+
+async function runDrawSuspense(button) {
+  const resultEl = $('teamsResult');
+  if (!resultEl) return;
+  resultEl.classList.add('draw-result-area-active');
+  for (let i = 0; i < 4; i += 1) {
+    resultEl.innerHTML = renderDrawSuspenseStep(i);
+    refreshIcons();
+    await delay(330);
+  }
+}
+
+function delay(ms = 250) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function handleGenerateTeams(button) {
+  if (!isAdmin()) {
+    toast('Apenas administradores podem gerar os times.');
+    return;
+  }
+  if (!state.activeRacha) {
+    toast('Selecione um racha antes de sortear.');
+    return;
+  }
+
+  const perTeam = Math.max(1, Math.min(30, Number($('sorteioPorTime')?.value || state.activeRacha.jogadores_por_time || 5)));
+  const mode = selectedDrawMode();
+  const confirmedMembers = confirmedActiveMembersForSelectedDate();
+
+  if (confirmedMembers.length < 2) {
+    toast('Confirme pelo menos 2 jogadores para gerar times.');
+    return;
+  }
+
+  const players = confirmedMembers.map(memberToDrawPlayer);
+  setLoading(button, true, 'Sorteando...');
+  try {
+    await runDrawSuspense(button);
+    const teams = buildTeams(players, perTeam, mode);
+    renderTeams(teams);
+    const dateLabel = formatDateBR(state.selectedDate || getDefaultGameDate(state.activeRacha));
+    state.lastTeamsText = teamsToText(teams, mode, dateLabel);
+
+    const { data, error } = await sb
+      .from('sorteios')
+      .insert({
+        racha_id: state.activeRacha.id,
+        criado_por: state.user.id,
+        modo: mode,
+        jogadores_por_time: perTeam,
+        resultado: teams
+      })
+      .select('id, racha_id, criado_por, modo, jogadores_por_time, resultado, created_at')
+      .single();
+
+    if (error) throw error;
+    state.sorteios = [data, ...(state.sorteios || [])].slice(0, 5);
+    toast('Times sorteados!');
+    renderApp();
+    setTimeout(() => {
+      const resultEl = $('teamsResult');
+      if (resultEl) {
+        resultEl.classList.add('draw-result-area-active');
+        resultEl.innerHTML = teamsToHTML(teams);
+        refreshIcons();
+        resultEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 80);
+  } catch (error) {
+    console.error(error);
+    const msg = String(error?.message || '').toLowerCase();
+    if (msg.includes('modo') || msg.includes('check')) {
+      toast('O banco ainda não aceita esse modo de sorteio. Rode o SQL da etapa de posições ou use Equilibrado/Aleatório.');
+    } else {
+      toast(error.message || 'Erro ao gerar times.');
+    }
+    const resultEl = $('teamsResult');
+    if (resultEl) resultEl.innerHTML = '';
+  } finally {
+    setLoading(button, false);
+  }
+}
+
+// Compatibilidade com versões anteriores que ainda chamavam generateTeams().
+async function generateTeams(button) {
+  return handleGenerateTeams(button);
 }
 
 async function copyTeams() {

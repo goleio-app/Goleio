@@ -8215,3 +8215,736 @@ body { min-height: 100%; background: #050505; }
     min-height: 100svh;
   }
 }
+
+/* ============================================================
+   ETAPA 53 - Sistema visual e hierarquia de cores
+   Objetivo: reduzir o excesso de dourado, melhorar leitura e dar
+   função para cada cor sem mudar a lógica do app.
+   ============================================================ */
+:root {
+  --bg: #040404;
+  --bg-2: #0a0a0b;
+  --surface-1: rgba(18, 18, 20, .90);
+  --surface-2: rgba(28, 28, 31, .72);
+  --surface-3: rgba(255,255,255,.055);
+  --surface-card: rgba(15, 15, 17, .92);
+  --border-soft: rgba(255,255,255,.075);
+  --border-mid: rgba(255,255,255,.12);
+  --border-brand: rgba(232, 196, 85, .28);
+  --line: var(--border-soft);
+  --card: var(--surface-card);
+  --gold: #d9b53d;
+  --gold-2: #f2d66f;
+  --brand-soft: rgba(217, 181, 61, .105);
+  --brand-mid: rgba(217, 181, 61, .20);
+  --success: #4fd184;
+  --success-soft: rgba(79, 209, 132, .105);
+  --success-line: rgba(79, 209, 132, .28);
+  --danger: #ff6b73;
+  --danger-soft: rgba(255, 107, 115, .105);
+  --danger-line: rgba(255, 107, 115, .28);
+  --warning: #f0b84d;
+  --warning-soft: rgba(240, 184, 77, .11);
+  --warning-line: rgba(240, 184, 77, .30);
+  --info: #72a7ff;
+  --info-soft: rgba(114, 167, 255, .105);
+  --info-line: rgba(114, 167, 255, .28);
+  --purple: #b991ff;
+  --purple-soft: rgba(185, 145, 255, .105);
+  --purple-line: rgba(185, 145, 255, .28);
+  --muted: #aaa59a;
+  --text: #f7f2e8;
+  --shadow: 0 18px 60px rgba(0,0,0,.38);
+}
+
+body {
+  background:
+    radial-gradient(circle at 20% 0%, rgba(217,181,61,.11), transparent 28%),
+    radial-gradient(circle at 85% 7%, rgba(114,167,255,.035), transparent 24%),
+    linear-gradient(145deg, #020202 0%, #070708 52%, #0c0b09 100%);
+}
+
+/* Bases: menos borda dourada, mais contraste limpo */
+.glass-card,
+.card,
+.clean-card,
+.pro-section-card,
+.home-section-card,
+.players-clean-card,
+.profile-config-card,
+.premium-notes-card,
+.sorteio-controls,
+.presence-response-card-v29,
+.presence-next-card-v29,
+.ranking-podium-section,
+.profile-kpi-card,
+.current-racha-card,
+.current-racha-stats > div,
+.ranking-prizes,
+.admin-panel,
+.accordion-card,
+.racha-overview-card,
+.bottom-sheet,
+.form-modal {
+  background:
+    linear-gradient(145deg, rgba(22,22,24,.86), rgba(8,8,9,.94));
+  border-color: var(--border-soft) !important;
+  box-shadow: 0 16px 44px rgba(0,0,0,.28);
+}
+
+.card::before,
+.selected-racha-home-card::before,
+.pro-hero-card::before,
+.ranking-podium-section::before {
+  opacity: .56;
+}
+
+/* Destaques reais por página: só a área principal recebe dourado */
+.selected-racha-home-card,
+.profile-card-stage,
+.premium-ranking-hero,
+.racha-overview-card-v45,
+.presence-next-card-v29,
+.sorteio-pro .pro-hero-card,
+.profile-hero-card,
+.current-racha-card {
+  border-color: var(--border-brand) !important;
+  background:
+    radial-gradient(circle at 88% 8%, rgba(217,181,61,.12), transparent 34%),
+    linear-gradient(145deg, rgba(24,23,19,.92), rgba(7,7,8,.94));
+}
+
+/* Títulos: dourado só no eyebrow/ícone, texto principal branco */
+.eyebrow,
+.profile-section-title span,
+.podium-headline .eyebrow,
+.section-headline .eyebrow,
+.compact-title-row .eyebrow {
+  color: var(--gold-2) !important;
+  letter-spacing: .18em;
+}
+.card h3,
+.section-headline h3,
+.compact-title-row h3,
+.pro-hero-card h3,
+.current-racha-head h3,
+.home-section-card h3,
+.players-clean-card h3 {
+  color: #fff;
+}
+.card h3 svg,
+.section-headline h3 svg,
+.compact-title-row svg {
+  color: var(--gold-2);
+}
+
+/* Botões: regra de hierarquia - primário dourado, secundário neutro */
+.btn-primary,
+button.btn-primary {
+  background: linear-gradient(135deg, #f6df79, #d6b033) !important;
+  color: #090806 !important;
+  border: 1px solid rgba(255,229,132,.50) !important;
+  box-shadow: 0 12px 26px rgba(217,181,61,.18), inset 0 1px 0 rgba(255,255,255,.22);
+}
+
+.btn-secondary,
+.mini-btn.btn-secondary,
+button.btn-secondary,
+a.btn-secondary {
+  background: rgba(255,255,255,.055) !important;
+  color: rgba(247,242,232,.88) !important;
+  border: 1px solid var(--border-mid) !important;
+  box-shadow: none !important;
+}
+
+.btn-secondary svg,
+.mini-btn.btn-secondary svg {
+  color: var(--gold-2);
+}
+
+.btn-ghost,
+.mini-btn.btn-ghost {
+  background: rgba(255,255,255,.035) !important;
+  color: rgba(247,242,232,.74) !important;
+  border: 1px solid rgba(255,255,255,.07) !important;
+}
+
+.btn-danger,
+.danger,
+.mini-btn.btn-danger {
+  background: var(--danger-soft) !important;
+  color: #ffb1b5 !important;
+  border: 1px solid var(--danger-line) !important;
+}
+
+/* Ações rápidas da home: menos competição visual */
+.home-action-card,
+.home-modal-trigger {
+  background: linear-gradient(145deg, rgba(255,255,255,.05), rgba(255,255,255,.025)) !important;
+  border-color: var(--border-soft) !important;
+}
+.home-action-card .action-icon,
+.home-modal-trigger .action-icon {
+  background: var(--brand-soft) !important;
+  border-color: var(--border-brand) !important;
+  color: var(--gold-2) !important;
+}
+.home-action-card b { color: #fff; }
+.home-action-card small { color: var(--muted); }
+
+/* Menu inferior: ativo claro, inativos neutros */
+.sidebar,
+.bottom-nav {
+  background: rgba(8,8,9,.94) !important;
+  border-color: rgba(255,255,255,.09) !important;
+}
+.nav-btn {
+  color: rgba(247,242,232,.54) !important;
+  border-color: transparent !important;
+}
+.nav-btn svg { color: rgba(247,242,232,.58); }
+.nav-btn.active,
+.side-nav .nav-btn.active {
+  color: var(--gold-2) !important;
+  background: linear-gradient(145deg, rgba(217,181,61,.18), rgba(217,181,61,.055)) !important;
+  border-color: rgba(217,181,61,.25) !important;
+}
+.nav-btn.active svg,
+.side-nav .nav-btn.active svg { color: var(--gold-2); }
+.nav-badge {
+  background: linear-gradient(135deg, #ffdf63, #d6b033) !important;
+  color: #090806 !important;
+}
+
+/* Badges e status com cores funcionais */
+.status-badge,
+.role-badge,
+.section-count,
+.pending-pill,
+.rating-pill,
+.pro-counter {
+  background: rgba(255,255,255,.055) !important;
+  border-color: rgba(255,255,255,.10) !important;
+  color: rgba(247,242,232,.72) !important;
+}
+.status-ativo,
+.status-confirmado,
+.status-confirmada,
+.status-confirmado strong,
+.presence-status-compact.status-confirmado {
+  background: var(--success-soft) !important;
+  border-color: var(--success-line) !important;
+  color: #8ff0b4 !important;
+}
+.status-pendente,
+.status-sem-resposta,
+.status-espera,
+.status-talvez,
+.pending-pill,
+.admin-pending-home-alert,
+.admin-pending-alert-card {
+  background: var(--warning-soft) !important;
+  border-color: var(--warning-line) !important;
+  color: #ffd88b !important;
+}
+.role-admin,
+.role-owner,
+.selected-role.role-admin {
+  background: var(--brand-soft) !important;
+  border-color: var(--border-brand) !important;
+  color: var(--gold-2) !important;
+}
+.role-evaluator,
+.selected-role.role-evaluator {
+  background: var(--info-soft) !important;
+  border-color: var(--info-line) !important;
+  color: #a7c8ff !important;
+}
+.username-badge {
+  background: rgba(255,255,255,.045) !important;
+  border-color: rgba(255,255,255,.08) !important;
+  color: rgba(247,242,232,.70) !important;
+}
+
+/* Cards de métricas: números importantes, rótulos discretos */
+.stat,
+.pro-stat,
+.profile-kpi-card,
+.home-metric,
+.sorteio-summary-pro div,
+.presence-stats-grid .pro-stat,
+.compact-presence-stats .pro-stat,
+.racha-quick-chips span,
+.profile-rating-numbers > div,
+.current-racha-stats > div {
+  background: rgba(255,255,255,.035) !important;
+  border-color: rgba(255,255,255,.075) !important;
+}
+.stat strong,
+.pro-stat strong,
+.profile-kpi-card strong,
+.home-metric strong,
+.sorteio-summary-pro strong,
+.presence-stats-grid strong,
+.compact-presence-stats strong,
+.racha-quick-chips strong,
+.profile-rating-numbers strong,
+.current-racha-stats strong {
+  color: var(--gold-2) !important;
+}
+.stat span,
+.pro-stat span,
+.profile-kpi-card span,
+.home-metric span,
+.sorteio-summary-pro span,
+.presence-stats-grid span,
+.compact-presence-stats span,
+.current-racha-stats span {
+  color: rgba(247,242,232,.54) !important;
+}
+
+/* Presença: respostas com cores diferentes */
+.presence-pill-action {
+  background: rgba(255,255,255,.045) !important;
+  border-color: rgba(255,255,255,.085) !important;
+  color: rgba(247,242,232,.82) !important;
+}
+.presence-pill-action[data-status="confirmado"].active,
+.presence-pill-action[data-status="confirmado"]:focus-visible {
+  background: var(--success-soft) !important;
+  border-color: var(--success-line) !important;
+  color: #bdf7d0 !important;
+}
+.presence-pill-action[data-status="talvez"].active {
+  background: var(--info-soft) !important;
+  border-color: var(--info-line) !important;
+  color: #b9d4ff !important;
+}
+.presence-pill-action[data-status="espera"].active {
+  background: var(--warning-soft) !important;
+  border-color: var(--warning-line) !important;
+  color: #ffd88b !important;
+}
+.presence-pill-action[data-status="nao_vou"].active,
+.presence-pill-action.danger.active {
+  background: var(--danger-soft) !important;
+  border-color: var(--danger-line) !important;
+  color: #ffc1c4 !important;
+}
+.answered-card {
+  border-color: var(--success-line) !important;
+  background: var(--success-soft) !important;
+}
+.answered-card.pending {
+  border-color: var(--warning-line) !important;
+  background: var(--warning-soft) !important;
+}
+.presence-group {
+  border-color: rgba(255,255,255,.07) !important;
+  background: rgba(255,255,255,.025) !important;
+}
+.presence-group-title b {
+  background: rgba(255,255,255,.055) !important;
+  border-color: rgba(255,255,255,.09) !important;
+}
+.presence-player-row {
+  background: rgba(255,255,255,.045) !important;
+  border: 1px solid rgba(255,255,255,.055) !important;
+}
+
+/* Sorteio: modos como cards neutros, selecionado dourado */
+.draw-mode-card,
+.choice-card {
+  background: rgba(255,255,255,.04) !important;
+  border-color: rgba(255,255,255,.08) !important;
+}
+.draw-mode-card.active,
+.choice-card.active,
+.ranking-tab.active {
+  border-color: rgba(217,181,61,.46) !important;
+  background: linear-gradient(145deg, rgba(217,181,61,.19), rgba(217,181,61,.06)) !important;
+  color: var(--gold-2) !important;
+  box-shadow: 0 14px 30px rgba(217,181,61,.10) !important;
+}
+.draw-readiness.ready {
+  background: var(--success-soft) !important;
+  border-color: var(--success-line) !important;
+}
+.draw-readiness.waiting {
+  background: var(--warning-soft) !important;
+  border-color: var(--warning-line) !important;
+}
+
+/* Ranking: preservar pódio premium, limpar o restante */
+.ranking-tab {
+  background: rgba(255,255,255,.045) !important;
+  border-color: rgba(255,255,255,.08) !important;
+  color: rgba(247,242,232,.66) !important;
+}
+.ranking-row,
+.podium-player-card,
+.prize-card,
+.my-ranking-card {
+  border-color: rgba(255,255,255,.08) !important;
+}
+.podium-rank.first,
+.podium-crown.first { color: var(--gold-2) !important; }
+.podium-rank.second,
+.podium-crown.second { color: #d7dce5 !important; }
+.podium-rank.third,
+.podium-crown.third { color: #d7a36b !important; }
+
+/* Racha: ações secundárias não precisam parecer todas primárias */
+.racha-overview-actions-v45 .btn-secondary,
+.racha-overview-actions-v45 .btn-ghost {
+  min-height: 44px;
+}
+.racha-tap-hint {
+  color: rgba(247,242,232,.48) !important;
+}
+.compact-member-card,
+.clean-player-row,
+.member-card,
+.racha-row-card,
+.invite-user-option,
+.premium-rating-row {
+  background: rgba(255,255,255,.04) !important;
+  border-color: rgba(255,255,255,.075) !important;
+}
+.compact-member-card:hover,
+.racha-row-card:hover,
+.invite-user-option:hover,
+.presence-player-row:hover {
+  border-color: rgba(217,181,61,.22) !important;
+  background: rgba(255,255,255,.055) !important;
+}
+
+/* Inputs: foco mais claro e menos dourado em repouso */
+input,
+select,
+textarea {
+  border-color: rgba(255,255,255,.10) !important;
+  background: rgba(255,255,255,.055) !important;
+}
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: rgba(217,181,61,.55) !important;
+  box-shadow: 0 0 0 3px rgba(217,181,61,.10) !important;
+}
+label { color: rgba(242,214,111,.92) !important; }
+
+/* Separação por página: cada aba recebe uma micro-identidade, sem virar carnaval */
+html[data-goleio-view="dashboard"] .topbar,
+html[data-goleio-view="dashboard"] .selected-racha-home-card { --page-accent: var(--gold-2); }
+html[data-goleio-view="perfil"] .topbar,
+html[data-goleio-view="perfil"] .profile-card-stage { --page-accent: var(--purple); }
+html[data-goleio-view="racha"] .topbar,
+html[data-goleio-view="racha"] .racha-overview-card-v45 { --page-accent: var(--info); }
+html[data-goleio-view="presenca"] .topbar,
+html[data-goleio-view="presenca"] .presence-next-card-v29 { --page-accent: var(--success); }
+html[data-goleio-view="ranking"] .topbar,
+html[data-goleio-view="ranking"] .premium-ranking-hero { --page-accent: var(--gold-2); }
+html[data-goleio-view="sorteio"] .topbar,
+html[data-goleio-view="sorteio"] .pro-hero-card { --page-accent: var(--warning); }
+
+html[data-goleio-view] .topbar {
+  border-color: color-mix(in srgb, var(--page-accent, var(--gold-2)) 22%, transparent) !important;
+}
+html[data-goleio-view] .topbar::after {
+  content: "";
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--page-accent, var(--gold-2)) 45%, transparent), transparent);
+  pointer-events: none;
+}
+
+/* Hero/card selecionado com faixa sutil da página */
+.selected-racha-home-card,
+.profile-card-stage,
+.racha-overview-card-v45,
+.presence-next-card-v29,
+.premium-ranking-hero,
+.sorteio-pro .pro-hero-card {
+  position: relative;
+}
+.selected-racha-home-card::after,
+.profile-card-stage::after,
+.racha-overview-card-v45::after,
+.presence-next-card-v29::after,
+.premium-ranking-hero::after,
+.sorteio-pro .pro-hero-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--page-accent, var(--gold-2)) 18%, transparent);
+}
+
+/* Reduz ruído visual em mobile */
+@media (max-width: 640px) {
+  .card,
+  .glass-card,
+  .selected-racha-home-card,
+  .profile-card-stage,
+  .racha-overview-card,
+  .presence-next-card-v29,
+  .presence-response-card-v29,
+  .sorteio-controls,
+  .premium-ranking-hero {
+    border-radius: 20px;
+  }
+  .eyebrow { font-size: .64rem; }
+  .muted,
+  .hint { color: rgba(247,242,232,.55) !important; }
+  .btn-primary,
+  .btn-secondary,
+  .btn-danger,
+  .btn-ghost,
+  .mini-btn { border-radius: 15px; }
+  .home-section-card,
+  .players-clean-card,
+  .profile-config-card,
+  .premium-notes-card { padding: 14px; }
+}
+
+/* === ETAPA 55: Sorteio inteligente com goleiros e suspense === */
+.draw-next-game-stats {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.draw-rule-alerts {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+.team-warning {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: -2px 0 10px;
+  padding: 7px 9px;
+  border-radius: 999px;
+  background: rgba(245, 158, 11, .10);
+  border: 1px solid rgba(245, 158, 11, .22);
+  color: var(--warning, #f59e0b);
+  font-size: .76rem;
+  font-weight: 850;
+}
+.team-warning svg { width: 14px; height: 14px; }
+.team-card-waiting {
+  border-style: dashed;
+  border-color: rgba(148, 163, 184, .28);
+  background: linear-gradient(180deg, rgba(148,163,184,.07), rgba(255,255,255,.025));
+}
+.team-card-waiting .team-card-head span {
+  color: var(--muted);
+}
+.draw-waiting-help {
+  margin-top: 10px;
+  text-align: center;
+}
+.draw-suspense-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: radial-gradient(circle at 50% 34%, rgba(212,175,55,.22), transparent 34%), rgba(2,2,2,.78);
+  backdrop-filter: blur(12px);
+  opacity: 1;
+  transition: opacity .24s ease, transform .24s ease;
+}
+.draw-suspense-overlay.closing {
+  opacity: 0;
+  transform: scale(.98);
+}
+.draw-suspense-card {
+  width: min(100%, 360px);
+  border-radius: 30px;
+  padding: 26px 20px 22px;
+  text-align: center;
+  background:
+    radial-gradient(circle at 74% 12%, rgba(255,224,135,.18), transparent 36%),
+    linear-gradient(180deg, rgba(18,18,18,.98), rgba(5,5,5,.98));
+  border: 1px solid rgba(255,224,135,.22);
+  box-shadow: 0 30px 90px rgba(0,0,0,.62), inset 0 0 0 1px rgba(255,255,255,.05);
+}
+.draw-suspense-card h3 {
+  margin: 4px 0 14px;
+  font-family: 'Sora', 'Inter', sans-serif;
+  letter-spacing: -.04em;
+}
+.draw-suspense-orbit {
+  width: 116px;
+  height: 116px;
+  margin: 0 auto 14px;
+  position: relative;
+  border-radius: 999px;
+  border: 1px solid rgba(255,224,135,.18);
+  background: rgba(255,255,255,.035);
+  animation: goleio-orbit-spin 1.45s linear infinite;
+}
+.draw-suspense-orbit span {
+  position: absolute;
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(0,0,0,.52);
+  border: 1px solid rgba(255,224,135,.18);
+  box-shadow: 0 12px 22px rgba(0,0,0,.32);
+}
+.draw-suspense-orbit span:nth-child(1) { left: 37px; top: -16px; }
+.draw-suspense-orbit span:nth-child(2) { right: -10px; bottom: 12px; }
+.draw-suspense-orbit span:nth-child(3) { left: -10px; bottom: 12px; }
+.draw-suspense-slots {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 7px;
+  margin: 0 0 12px;
+}
+.draw-suspense-slots span {
+  padding: 7px 9px;
+  border-radius: 999px;
+  background: rgba(255,224,135,.08);
+  border: 1px solid rgba(255,224,135,.14);
+  color: var(--gold-2);
+  font-size: .72rem;
+  font-weight: 850;
+}
+@keyframes goleio-orbit-spin {
+  to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .draw-suspense-orbit { animation: none; }
+}
+@media (max-width: 640px) {
+  .draw-next-game-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .draw-suspense-card { border-radius: 26px; }
+}
+
+
+/* ============================================================
+   ETAPA 56 - Correção Sorteio + organização mobile
+   ============================================================ */
+.sorteio-clean-v2 {
+  padding-bottom: 128px;
+}
+.sorteio-clean-v2 .sorteio-card {
+  overflow: visible;
+}
+.sorteio-actions.draw-actions-safe {
+  position: static;
+  bottom: auto;
+  z-index: 1;
+  background: transparent;
+  padding-top: 14px;
+  margin-top: 4px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+}
+.sorteio-actions.draw-actions-safe .btn-primary,
+.sorteio-actions.draw-actions-safe .btn-secondary {
+  width: 100%;
+  min-height: 52px;
+}
+.draw-copy-button {
+  opacity: .94;
+}
+.draw-result-area {
+  margin-top: 16px;
+  padding-bottom: 8px;
+}
+.draw-result-area-active {
+  display: grid;
+}
+.draw-suspense-card {
+  grid-column: 1 / -1;
+  min-height: 190px;
+  border: 1px solid rgba(222,185,78,.18);
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(222,185,78,.16), transparent 36%),
+    linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.015));
+  display: grid;
+  place-items: center;
+  text-align: center;
+  gap: 8px;
+  padding: 22px;
+}
+.draw-suspense-orb {
+  width: 58px;
+  height: 58px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  color: var(--gold-2);
+  background: rgba(222,185,78,.12);
+  border: 1px solid rgba(222,185,78,.28);
+  animation: drawPulse 900ms ease-in-out infinite alternate;
+}
+.draw-suspense-orb svg { width: 28px; height: 28px; }
+.draw-suspense-card strong {
+  color: var(--text);
+  font-size: 1.06rem;
+}
+.draw-suspense-card span {
+  color: var(--muted);
+  font-weight: 750;
+}
+.draw-suspense-dots {
+  display: inline-flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+.draw-suspense-dots b {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--gold-2);
+  opacity: .35;
+  animation: drawDot 900ms ease-in-out infinite;
+}
+.draw-suspense-dots b:nth-child(2) { animation-delay: .14s; }
+.draw-suspense-dots b:nth-child(3) { animation-delay: .28s; }
+@keyframes drawPulse {
+  from { transform: scale(.96) rotate(-4deg); box-shadow: 0 0 0 rgba(222,185,78,0); }
+  to { transform: scale(1.05) rotate(4deg); box-shadow: 0 0 34px rgba(222,185,78,.20); }
+}
+@keyframes drawDot {
+  0%, 100% { transform: translateY(0); opacity: .3; }
+  50% { transform: translateY(-5px); opacity: 1; }
+}
+.bottom-safe-space {
+  height: 84px;
+}
+@media (min-width: 641px) {
+  .sorteio-actions.draw-actions-safe {
+    grid-template-columns: minmax(0, 1fr) minmax(170px, .55fr);
+  }
+}
+@media (max-width: 640px) {
+  .sorteio-clean-v2 {
+    padding-bottom: 144px;
+  }
+  .draw-mode-grid.compact-mode-grid {
+    gap: 9px;
+  }
+  .compact-mode-grid .draw-mode-card {
+    min-height: 64px;
+  }
+  .next-game-stats.draw-next-game-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .bottom-safe-space {
+    height: 96px;
+  }
+}

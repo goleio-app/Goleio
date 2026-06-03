@@ -1,5 +1,5 @@
-/* Goleio PWA Service Worker - Etapa 52 */
-const GOLEIO_SW_VERSION = '52.0.0';
+/* Goleio PWA Service Worker - Etapa 54 */
+const GOLEIO_SW_VERSION = '56.0.0';
 const STATIC_CACHE = `goleio-static-v${GOLEIO_SW_VERSION}`;
 
 const APP_SHELL = [
