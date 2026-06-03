@@ -2,9 +2,16 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Goleio - Comunidade do Racha</title>
   <meta name="theme-color" content="#050505" />
+  <meta name="application-name" content="Goleio" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Goleio" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="msapplication-TileColor" content="#050505" />
+  <meta name="format-detection" content="telephone=no" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
@@ -16,6 +23,22 @@
 </head>
 <body>
   <div id="toast" class="toast hidden"></div>
+  <div id="networkBanner" class="pwa-status-banner hidden" role="status"></div>
+  <div id="pwaUpdateBanner" class="pwa-action-banner hidden" role="status">
+    <div>
+      <strong>Nova versão disponível</strong>
+      <span>Atualize para evitar bugs e usar a versão mais recente.</span>
+    </div>
+    <button id="pwaUpdateBtn" type="button">Atualizar</button>
+  </div>
+  <div id="pwaInstallBanner" class="pwa-action-banner install hidden" role="status">
+    <div>
+      <strong>Instale o Goleio</strong>
+      <span>Abra como app, sem barra do navegador.</span>
+    </div>
+    <button id="pwaInstallBtn" type="button">Instalar</button>
+    <button id="pwaInstallClose" class="icon-only" type="button" aria-label="Fechar">×</button>
+  </div>
   <div id="globalProgress" class="global-progress hidden"><span></span></div>
   <div id="appLoader" class="app-loader hidden">
     <div class="loader-card">

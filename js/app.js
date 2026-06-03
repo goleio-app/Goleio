@@ -7,6 +7,7 @@
 
 const SUPABASE_URL = window.GOLEIO_SUPABASE_URL;
 const SUPABASE_ANON_KEY = window.GOLEIO_SUPABASE_ANON_KEY;
+const GOLEIO_APP_VERSION = '52.0.0';
 
 let sb = null;
 
@@ -40,7 +41,11 @@ const state = {
   rankingMode: 'geral',
   requiredProfileModalShownFor: null,
   adminOpenPanel: null,
-  presenceReminderDismissed: {}
+  presenceReminderDismissed: {},
+  lastSuccessfulLoadAt: 0,
+  lastBackgroundRefreshAt: 0,
+  pwaInstallPrompt: null,
+  pwaRefreshing: false
 };
 
 
@@ -163,6 +168,119 @@ function setLoading(button, isLoading, text = 'Aguarde...') {
 
 function refreshIcons() {
   if (window.lucide) window.lucide.createIcons();
+}
+
+function isStandaloneApp() {
+  return window.matchMedia?.('(display-mode: standalone)')?.matches || window.navigator.standalone === true;
+}
+
+function setNetworkBanner(message = '', type = 'info') {
+  const banner = $('networkBanner');
+  if (!banner) return;
+  banner.textContent = message;
+  banner.dataset.type = type;
+  banner.classList.toggle('hidden', !message);
+}
+
+function updateNetworkState() {
+  if (!navigator.onLine) {
+    document.body.classList.add('is-offline');
+    setNetworkBanner('Você está offline. Algumas ações dependem da internet.', 'offline');
+    return;
+  }
+  document.body.classList.remove('is-offline');
+  setNetworkBanner('');
+}
+
+function showPwaUpdateBanner(show = true) {
+  $('pwaUpdateBanner')?.classList.toggle('hidden', !show);
+}
+
+function maybeShowInstallBanner() {
+  const banner = $('pwaInstallBanner');
+  if (!banner) return;
+  const dismissed = localStorage.getItem('goleio_install_dismissed') === GOLEIO_APP_VERSION;
+  const canPrompt = Boolean(state.pwaInstallPrompt);
+  const shouldShow = !isStandaloneApp() && !dismissed && canPrompt;
+  banner.classList.toggle('hidden', !shouldShow);
+}
+
+async function handlePwaInstall() {
+  const prompt = state.pwaInstallPrompt;
+  if (!prompt) {
+    toast('No iPhone, abra no Safari e use Compartilhar > Adicionar à Tela de Início.');
+    return;
+  }
+  prompt.prompt();
+  const result = await prompt.userChoice.catch(() => null);
+  state.pwaInstallPrompt = null;
+  $('pwaInstallBanner')?.classList.add('hidden');
+  if (result?.outcome === 'accepted') toast('Goleio instalado!');
+}
+
+function dismissPwaInstall() {
+  localStorage.setItem('goleio_install_dismissed', GOLEIO_APP_VERSION);
+  $('pwaInstallBanner')?.classList.add('hidden');
+}
+
+async function registerPwaServiceWorker() {
+  if (!('serviceWorker' in navigator)) return;
+  try {
+    const registration = await navigator.serviceWorker.register(`./service-worker.js?v=${GOLEIO_APP_VERSION}`);
+    navigator.serviceWorker.addEventListener('message', (event) => {
+      if (event.data?.type === 'GOLEIO_SW_ACTIVATED' && state.pwaRefreshing) window.location.reload();
+    });
+
+    if (registration.waiting && navigator.serviceWorker.controller) showPwaUpdateBanner(true);
+
+    registration.addEventListener('updatefound', () => {
+      const worker = registration.installing;
+      if (!worker) return;
+      worker.addEventListener('statechange', () => {
+        if (worker.state === 'installed' && navigator.serviceWorker.controller) showPwaUpdateBanner(true);
+      });
+    });
+  } catch (error) {
+    console.warn('Service worker não registrado:', error);
+  }
+}
+
+async function applyPwaUpdate() {
+  if (!('serviceWorker' in navigator)) return window.location.reload();
+  state.pwaRefreshing = true;
+  const registration = await navigator.serviceWorker.getRegistration();
+  if (registration?.waiting) {
+    registration.waiting.postMessage({ type: 'GOLEIO_SKIP_WAITING' });
+    setTimeout(() => window.location.reload(), 800);
+    return;
+  }
+  window.location.reload();
+}
+
+function saveUiState() {
+  try {
+    localStorage.setItem('goleio_last_view', state.currentView || 'dashboard');
+    if (state.activeRacha?.id) localStorage.setItem('goleio_active_racha', state.activeRacha.id);
+  } catch (_) {}
+}
+
+function restoreUiState() {
+  try {
+    const view = localStorage.getItem('goleio_last_view');
+    if (view) state.currentView = view;
+  } catch (_) {}
+}
+
+async function refreshInBackground(reason = 'retorno') {
+  if (!state.user || !navigator.onLine || state.contentLoading) return;
+  const now = Date.now();
+  if (now - state.lastBackgroundRefreshAt < 45000) return;
+  state.lastBackgroundRefreshAt = now;
+  try {
+    await loadInitialData({ silent: true, keepScreen: true });
+  } catch (error) {
+    console.warn(`Atualização em segundo plano falhou (${reason}):`, error);
+  }
 }
 
 function showAppLoader(show = true) {
@@ -843,16 +961,29 @@ async function init() {
     if (!validateConfig()) return;
     sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+    restoreUiState();
     bindBaseEvents();
+    registerPwaServiceWorker();
 
     const { data } = await sb.auth.getSession();
     state.session = data.session;
     state.user = data.session?.user || null;
 
-    sb.auth.onAuthStateChange(async (_event, session) => {
+    sb.auth.onAuthStateChange(async (event, session) => {
       try {
+        const previousUserId = state.user?.id || null;
         state.session = session;
         state.user = session?.user || null;
+
+        // O Supabase dispara eventos de sessão ao voltar do app/aba.
+        // Não recarregamos tudo em TOKEN_REFRESHED para evitar aviso falso de falha
+        // quando o celular acabou de retomar a conexão.
+        if (event === 'TOKEN_REFRESHED' && state.user && state.profile && previousUserId === state.user.id) {
+          showAppLoader(false);
+          stopProgress();
+          return;
+        }
+
         if (state.user) {
           await loadInitialData();
         } else {
@@ -914,8 +1045,39 @@ function bindBaseEvents() {
   document.addEventListener('change', handleChange);
   document.addEventListener('input', handleInput);
   document.addEventListener('pointerdown', handlePointerFeedback, { passive: true });
-  window.addEventListener('pageshow', async (event) => { showAppLoader(false); stopProgress(); if (event.persisted && state.user) { try { await loadInitialData(); } catch (_) { showAppLoader(false); } } });
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) { showAppLoader(false); stopProgress(); } });
+  window.addEventListener('pageshow', async (event) => {
+    showAppLoader(false);
+    stopProgress();
+    updateNetworkState();
+    if (event.persisted && state.user) await refreshInBackground('pageshow');
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      showAppLoader(false);
+      stopProgress();
+      updateNetworkState();
+      refreshInBackground('visibilitychange');
+    }
+  });
+  window.addEventListener('online', () => {
+    updateNetworkState();
+    toast('Conexão restabelecida. Atualizando dados...', 2200);
+    refreshInBackground('online');
+  });
+  window.addEventListener('offline', () => {
+    updateNetworkState();
+    toast('Você está offline. Mantive os últimos dados na tela.', 3200);
+  });
+  window.addEventListener('beforeinstallprompt', (event) => {
+    event.preventDefault();
+    state.pwaInstallPrompt = event;
+    maybeShowInstallBanner();
+  });
+  window.addEventListener('appinstalled', () => {
+    state.pwaInstallPrompt = null;
+    $('pwaInstallBanner')?.classList.add('hidden');
+    toast('Goleio instalado com sucesso!');
+  });
   window.addEventListener('error', () => { showAppLoader(false); stopProgress(); });
   window.addEventListener('unhandledrejection', () => { showAppLoader(false); stopProgress(); });
 
@@ -923,7 +1085,12 @@ function bindBaseEvents() {
   $('tabRegister')?.addEventListener('click', () => toggleAuth('register'));
   $('logoutBtn')?.addEventListener('click', logout);
   $('mobileLogoutBtn')?.addEventListener('click', logout);
+  $('pwaUpdateBtn')?.addEventListener('click', applyPwaUpdate);
+  $('pwaInstallBtn')?.addEventListener('click', handlePwaInstall);
+  $('pwaInstallClose')?.addEventListener('click', dismissPwaInstall);
+  updateNetworkState();
 }
+
 
 function toggleAuth(mode) {
   const isLogin = mode === 'login';
@@ -951,19 +1118,24 @@ function showApp() {
   $('authView').classList.add('hidden');
   $('appView').classList.remove('hidden');
   renderApp();
+  maybeShowInstallBanner();
 }
 
-async function loadInitialData() {
-  showAppLoader(true);
+
+async function loadInitialData(options = {}) {
+  const { silent = false, keepScreen = false } = options;
+  if (!silent) showAppLoader(true);
   startProgress();
+  state.contentLoading = true;
+  const hadCachedData = Boolean(state.profile || state.memberships.length || state.activeRacha || state.members.length);
   try {
-    await withTimeout(ensureProfile(), 9000, 'perfil');
-    await withTimeout(loadMemberships(), 9000, 'rachas');
-    await withTimeout(loadGlobalProfileStats(), 9000, 'estatísticas globais');
-    await withTimeout(loadConvites(), 9000, 'convites');
+    await withTimeout(ensureProfile(), 14000, 'perfil');
+    await withTimeout(loadMemberships(), 14000, 'rachas');
+    await withTimeout(loadGlobalProfileStats(), 14000, 'estatísticas globais');
+    await withTimeout(loadConvites(), 14000, 'convites');
     chooseDefaultActiveRacha();
     if (state.activeRacha) {
-      await withTimeout(loadRachaData(), 10000, 'dados do racha');
+      await withTimeout(loadRachaData(), 16000, 'dados do racha');
     } else {
       state.members = [];
       state.ranking = [];
@@ -974,15 +1146,31 @@ async function loadInitialData() {
     }
   } catch (error) {
     console.error('Erro ao carregar o app:', error);
-    toast('Não consegui carregar todos os dados agora. Recarregue ou tente novamente.');
-    state.activeMembership = null;
-    state.activeRacha = null;
-    localStorage.removeItem('goleio_active_racha');
-    state.currentView = 'dashboard';
+    if (hadCachedData) {
+      if (!silent) toast('Conexão retomada. Mantive os dados carregados; toque em Atualizar se precisar.', 3600);
+      if (!getAllowedViews().includes(state.currentView)) state.currentView = state.activeRacha ? 'racha' : 'dashboard';
+    } else {
+      toast(navigator.onLine ? 'Não consegui carregar todos os dados agora. Tente novamente.' : 'Você está offline. Mantive a tela pronta para tentar novamente.');
+      if (!keepScreen) {
+        state.activeMembership = null;
+        state.activeRacha = null;
+        localStorage.removeItem('goleio_active_racha');
+        state.currentView = 'dashboard';
+      }
+    }
   } finally {
     state.contentLoading = false;
     stopProgress();
-    showApp();
+    state.lastSuccessfulLoadAt = Date.now();
+    saveUiState();
+    if (silent) {
+      normalizeCurrentView();
+      renderApp();
+      refreshIcons();
+    } else {
+      showApp();
+    }
+    maybeShowInstallBanner();
   }
 }
 
@@ -1215,7 +1403,8 @@ async function loadPresencas(date) {
     .from('presencas')
     .select('*')
     .eq('racha_id', state.activeRacha.id)
-    .eq('data_jogo', state.selectedDate);
+    .eq('data_jogo', state.selectedDate)
+    .order('updated_at', { ascending: false });
 
   if (error) {
     console.error(error);
@@ -1281,6 +1470,8 @@ function renderContentSkeleton(view = state.currentView) {
 }
 
 function renderApp() {
+  document.documentElement.dataset.goleioVersion = GOLEIO_APP_VERSION;
+  saveUiState();
   normalizeCurrentView();
   const profileName = state.profile?.apelido || state.profile?.nome || 'Jogador';
   $('topEyebrow').textContent = `Olá, ${profileName}`;
@@ -1809,19 +2000,30 @@ function renderPerfil() {
   const modalidade = currentModalidade();
   const positionScopeLabel = state.activeRacha ? `Posição neste racha (${state.activeRacha.nome})` : 'Posição padrão';
   return `
-    <div class="card-grid profile-layout">
-      <div class="profile-main-stack">
-        ${renderPlayerCard(p, getProfileCardAverage(), getProfileCardAttrs())}
-        <div class="profile-share-actions">
+    <div class="profile-premium-page">
+      <section class="profile-hero-premium">
+        <div class="profile-card-stage">
+          ${renderPlayerCard(p, getProfileCardAverage(), getProfileCardAttrs())}
+        </div>
+        <div class="profile-hero-actions-v2">
           <button class="btn-primary full" type="button" data-action="open-story-share"><i data-lucide="share-2"></i> Compartilhar cartinha</button>
         </div>
-        ${renderProfileRatingOverview()}
-      </div>
+      </section>
 
-      <div class="profile-actions-stack">
-        <details class="accordion-card">
+      ${renderProfileRatingOverview()}
+
+      <section class="profile-settings-premium">
+        <div class="profile-section-title">
+          <div>
+            <p class="eyebrow">Minha conta</p>
+            <h3>Configurações do perfil</h3>
+          </div>
+          <span class="mini-tag gold">Perfil</span>
+        </div>
+
+        <details class="accordion-card profile-config-card">
           <summary>
-            <span><i data-lucide="pencil"></i> Editar perfil</span>
+            <span><i data-lucide="pencil"></i> Editar dados</span>
             <i data-lucide="chevron-down" class="summary-chevron"></i>
           </summary>
           <div class="accordion-content">
@@ -1896,7 +2098,7 @@ function renderPerfil() {
           </div>
         </details>
 
-        <details class="accordion-card">
+        <details class="accordion-card profile-config-card">
           <summary>
             <span><i data-lucide="image-up"></i> Alterar foto</span>
             <i data-lucide="chevron-down" class="summary-chevron"></i>
@@ -1908,7 +2110,7 @@ function renderPerfil() {
             <button class="btn-secondary full" data-action="upload-avatar"><i data-lucide="upload"></i> Enviar foto</button>
           </div>
         </details>
-      </div>
+      </section>
     </div>
   `;
 }
@@ -1940,41 +2142,74 @@ function renderProfileRatingOverview() {
   const activeOverall = activeRow?.media_geral ? overallScore(activeRow.media_geral) : null;
   const globalOverall = global?.media_geral ? overallScore(global.media_geral) : null;
   const rows = state.ratingsByRacha || [];
+  const totalRachas = Number(global?.total_rachas || rows.length || state.memberships?.filter((m) => m.status === 'ativo').length || 0);
+  const totalVotos = Number(global?.total_avaliacoes || 0);
+  const activeRole = activeRoleLabel();
+  const activePosition = state.activeMembership?.posicao_detalhada || state.profile?.posicao_detalhada || state.profile?.posicao || '';
+  const activeMeta = state.activeRacha
+    ? `${safe(state.activeRacha.modalidade || '')}${state.activeRacha.dia_semana ? ` • ${dayName(state.activeRacha.dia_semana)}` : ''}${state.activeRacha.horario ? ` • ${safe(state.activeRacha.horario.slice(0, 5))}` : ''}`
+    : '';
 
   return `
-    <div class="profile-rating-stack">
-      <div class="profile-rating-summary card">
+    <section class="profile-dashboard-premium">
+      <div class="profile-section-title">
         <div>
-          <p class="eyebrow">Nota do jogador</p>
-          <h3>Resumo de desempenho</h3>
-          <p class="muted">A nota global junta as avaliações dos rachas onde você participa. Cada racha continua mantendo sua própria nota.</p>
+          <p class="eyebrow">Meu desempenho</p>
+          <h3>Status no Goleio</h3>
         </div>
-        <div class="profile-rating-numbers">
-          <div><span>Global</span><strong>${globalOverall || '-'}</strong></div>
-          <div><span>Rachas</span><strong>${safe(global?.total_rachas || rows.length || 0)}</strong></div>
-          <div><span>Votos</span><strong>${safe(global?.total_avaliacoes || 0)}</strong></div>
+        <span class="mini-tag gold">${globalOverall || '-'} OVR</span>
+      </div>
+
+      <div class="profile-kpi-grid">
+        <div class="profile-kpi-card highlight">
+          <span>Global</span>
+          <strong>${globalOverall || '-'}</strong>
+          <small>overall</small>
+        </div>
+        <div class="profile-kpi-card">
+          <span>Rachas</span>
+          <strong>${safe(totalRachas)}</strong>
+          <small>comunidade(s)</small>
+        </div>
+        <div class="profile-kpi-card">
+          <span>Votos</span>
+          <strong>${safe(totalVotos)}</strong>
+          <small>recebidos</small>
         </div>
       </div>
 
+      <div class="profile-progress-note">
+        <i data-lucide="sparkles"></i>
+        <p>${totalVotos > 0 ? `Sua cartinha já recebeu ${safe(totalVotos)} voto(s). Continue jogando para evoluir seu overall.` : 'Sua cartinha começa em 60. Assim que os avaliadores votarem, seu overall começa a evoluir.'}</p>
+      </div>
+
       ${state.activeRacha ? `
-        <div class="profile-active-rating card">
-          <div>
-            <p class="eyebrow">Racha selecionado</p>
-            <h3>${safe(state.activeRacha.nome)}</h3>
-            <p class="muted">Nota neste racha: <strong>${activeOverall || '-'}</strong> • ${safe(activeRow?.total_avaliacoes || 0)} avaliação(ões)</p>
+        <article class="profile-current-racha-card">
+          <div class="current-racha-head">
+            ${rachaAvatarHTML(state.activeRacha, 'current-racha-icon')}
+            <div>
+              <p class="eyebrow">Racha atual</p>
+              <h3>${safe(state.activeRacha.nome)}</h3>
+              <small>${activeMeta}</small>
+            </div>
+            <span class="mini-tag ${activeRole === 'Admin' ? 'ok' : 'gold'}">${safe(activeRole)}</span>
           </div>
-          <span class="active-dot">${safe(activeRoleLabel())}</span>
-        </div>
+          <div class="current-racha-stats">
+            <div><span>Nota no racha</span><strong>${activeOverall || '-'}</strong></div>
+            <div><span>Avaliações</span><strong>${safe(activeRow?.total_avaliacoes || 0)}</strong></div>
+            <div><span>Posição</span><strong>${safe(positionLabel(activePosition) || '-')}</strong></div>
+          </div>
+        </article>
       ` : ''}
 
-      <details class="accordion-card profile-ratings-details">
+      <details class="accordion-card profile-ratings-details premium-notes-card">
         <summary>
           <span><i data-lucide="bar-chart-3"></i> Notas por racha</span>
           <i data-lucide="chevron-down" class="summary-chevron"></i>
         </summary>
-        <div class="accordion-content rating-by-racha-list">
+        <div class="accordion-content rating-by-racha-list premium-rating-list">
           ${rows.length ? rows.map((row) => `
-            <div class="rating-by-racha-row">
+            <div class="rating-by-racha-row premium-rating-row">
               <div>
                 <strong>${safe(row.racha_nome)}</strong>
                 <small>${safe(row.modalidade || '')} • ${safe(row.papel || 'jogador')}</small>
@@ -1987,7 +2222,7 @@ function renderProfileRatingOverview() {
           `).join('') : '<p class="muted">Você ainda não tem avaliações salvas nos rachas.</p>'}
         </div>
       </details>
-    </div>
+    </section>
   `;
 }
 
@@ -2731,7 +2966,7 @@ function renderRacha() {
           </div>
           <span class="section-count">${activeMembers.length}</span>
         </div>
-        <p class="racha-tap-hint"><i data-lucide="hand-pointer"></i> Toque em um jogador para abrir a cartinha.</p>
+        <p class="racha-tap-hint"><i data-lucide="mouse-pointer-click"></i> Toque em um jogador para abrir a cartinha.</p>
         ${renderMembers(activeMembers)}
       </div>
     </section>
@@ -3215,17 +3450,41 @@ function closeModal() {
   document.querySelectorAll('.modal-overlay').forEach((el) => el.remove());
 }
 
+
+function activePresenceMap() {
+  const activeIds = new Set(state.members.filter((m) => m.status === 'ativo').map((m) => m.user_id));
+  const map = new Map();
+  (state.presencas || []).forEach((p) => {
+    if (!activeIds.has(p.user_id)) return;
+    if (!map.has(p.user_id)) map.set(p.user_id, p);
+  });
+  return map;
+}
+
+function getPresenceForUser(userId) {
+  return activePresenceMap().get(userId)?.status || null;
+}
+
+function getPresenceStatsForActiveMembers() {
+  const map = activePresenceMap();
+  const stats = { confirmado: 0, espera: 0, talvez: 0, nao_vou: 0, sem_resposta: 0 };
+  state.members.filter((m) => m.status === 'ativo').forEach((m) => {
+    const status = map.get(m.user_id)?.status || 'sem_resposta';
+    if (Object.prototype.hasOwnProperty.call(stats, status)) stats[status] += 1;
+    else stats.sem_resposta += 1;
+  });
+  stats.respondidos = stats.confirmado + stats.espera + stats.talvez + stats.nao_vou;
+  return stats;
+}
+
 function renderPresenca() {
   if (!state.activeRacha) return requireActiveRachaHTML('Presença indisponível');
   if (!isMatchingRachaDay(state.selectedDate, state.activeRacha)) {
     state.selectedDate = getDefaultGameDate(state.activeRacha);
   }
-  const myPresence = state.presencas.find((p) => p.user_id === state.user.id)?.status || null;
-  const stats = ['confirmado', 'espera', 'talvez', 'nao_vou'].reduce((acc, key) => {
-    acc[key] = state.presencas.filter((p) => p.status === key).length;
-    return acc;
-  }, {});
-  const totalRespondidos = Object.values(stats).reduce((a, b) => a + b, 0);
+  const myPresence = getPresenceForUser(state.user.id);
+  const stats = getPresenceStatsForActiveMembers();
+  const totalRespondidos = stats.respondidos;
   const selectedLabel = `${dayName(dateFromInput(state.selectedDate).getDay())}, ${formatDateBR(state.selectedDate)}`;
 
   return `
@@ -3290,7 +3549,7 @@ function renderPresenceList() {
   ];
 
   const itemsByStatus = (status) => activeMembers.filter((m) => {
-    const pres = state.presencas.find((x) => x.user_id === m.user_id)?.status || 'sem resposta';
+    const pres = getPresenceForUser(m.user_id) || 'sem resposta';
     return pres === status;
   });
 
@@ -3694,7 +3953,7 @@ function renderSorteio() {
   const nextDate = getDefaultGameDate(state.activeRacha);
   if (state.selectedDate !== nextDate) state.selectedDate = nextDate;
 
-  const confirmed = state.presencas.filter((p) => p.status === 'confirmado').length;
+  const confirmed = getPresenceStatsForActiveMembers().confirmado;
   const enough = confirmed >= 2;
   const perTeam = Number(state.activeRacha.jogadores_por_time || 5);
   const estimatedTeams = enough ? Math.max(1, Math.ceil(confirmed / perTeam)) : 0;
@@ -4796,8 +5055,8 @@ async function setPresence(status) {
 
   let finalStatus = status;
   const max = Number(state.activeRacha.max_jogadores || 0);
-  const current = state.presencas.find((p) => p.user_id === state.user.id)?.status;
-  const confirmados = state.presencas.filter((p) => p.status === 'confirmado').length;
+  const current = getPresenceForUser(state.user.id);
+  const confirmados = getPresenceStatsForActiveMembers().confirmado;
   if (status === 'confirmado' && max && confirmados >= max && current !== 'confirmado') {
     finalStatus = 'espera';
     toast('Racha lotado. Você entrou na lista de espera.');
@@ -5009,7 +5268,7 @@ async function generateTeams(button) {
     const perTeam = Number($('sorteioPorTime')?.value || state.activeRacha.jogadores_por_time || 5);
     const mode = selectedDrawMode();
     state.sorteioMode = mode;
-    const confirmedIds = new Set(state.presencas.filter((p) => p.status === 'confirmado').map((p) => p.user_id));
+    const confirmedIds = new Set([...activePresenceMap().entries()].filter(([, p]) => p.status === 'confirmado').map(([userId]) => userId));
 
     const players = state.members
       .filter((m) => m.status === 'ativo' && confirmedIds.has(m.user_id))

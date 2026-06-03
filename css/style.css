@@ -7808,3 +7808,410 @@ details[open] .summary-chevron, details[open] summary > svg:last-child { transfo
     border-radius: 20px !important;
   }
 }
+
+/* ============================================================
+   ETAPA 51 - Meu Perfil Premium
+   Página mais limpa, com cartinha como protagonista e dados enxutos
+   ============================================================ */
+.profile-premium-page {
+  display: grid;
+  gap: 16px;
+}
+
+.profile-hero-premium {
+  display: grid;
+  gap: 12px;
+}
+
+.profile-card-stage {
+  display: grid;
+  place-items: center;
+  padding: 0 0 2px;
+}
+
+.profile-hero-actions-v2 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.profile-dashboard-premium,
+.profile-settings-premium {
+  display: grid;
+  gap: 12px;
+}
+
+.profile-section-title {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 2px 2px 0;
+}
+
+.profile-section-title h3 {
+  margin: 2px 0 0;
+  font-family: 'Sora', 'Inter', sans-serif;
+  font-size: clamp(1.05rem, 3.5vw, 1.35rem);
+  line-height: 1.05;
+  letter-spacing: -.04em;
+}
+
+.profile-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.profile-kpi-card {
+  min-height: 82px;
+  padding: 13px 12px;
+  border-radius: 20px;
+  border: 1px solid rgba(222,185,78,.14);
+  background:
+    radial-gradient(circle at 82% 12%, rgba(255,224,135,.08), transparent 30%),
+    linear-gradient(145deg, rgba(23,22,19,.86), rgba(8,8,7,.90));
+  box-shadow: 0 10px 28px rgba(0,0,0,.20);
+}
+
+.profile-kpi-card.highlight {
+  border-color: rgba(255,224,135,.26);
+  background:
+    radial-gradient(circle at 82% 12%, rgba(255,224,135,.20), transparent 34%),
+    linear-gradient(145deg, rgba(44,39,19,.78), rgba(10,10,8,.92));
+}
+
+.profile-kpi-card span,
+.current-racha-stats span {
+  display: block;
+  color: var(--muted);
+  font-size: .68rem;
+  text-transform: uppercase;
+  font-weight: 900;
+  letter-spacing: .06em;
+}
+
+.profile-kpi-card strong {
+  display: block;
+  color: var(--gold-2);
+  font-family: 'Sora', 'Inter', sans-serif;
+  font-size: 1.62rem;
+  line-height: 1;
+  margin-top: 7px;
+  letter-spacing: -.06em;
+}
+
+.profile-kpi-card small {
+  display: block;
+  color: rgba(255,255,255,.46);
+  font-size: .72rem;
+  margin-top: 5px;
+  font-weight: 750;
+}
+
+.profile-progress-note {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(222,185,78,.13);
+  border-radius: 20px;
+  background: rgba(255,255,255,.025);
+}
+
+.profile-progress-note svg {
+  width: 38px;
+  height: 38px;
+  padding: 9px;
+  border-radius: 14px;
+  color: var(--gold-2);
+  background: rgba(255,224,135,.07);
+  border: 1px solid rgba(255,224,135,.14);
+}
+
+.profile-progress-note p {
+  margin: 0;
+  color: var(--muted);
+  font-size: .9rem;
+  line-height: 1.35;
+}
+
+.profile-current-racha-card {
+  padding: 14px;
+  border: 1px solid rgba(222,185,78,.16);
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 78% 0%, rgba(255,224,135,.12), transparent 34%),
+    linear-gradient(145deg, rgba(20,20,17,.88), rgba(7,7,6,.92));
+  box-shadow: 0 14px 42px rgba(0,0,0,.24);
+}
+
+.current-racha-head {
+  display: grid;
+  grid-template-columns: 58px minmax(0,1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.current-racha-icon {
+  width: 58px;
+  height: 58px;
+  border-radius: 19px;
+}
+
+.current-racha-head h3 {
+  margin: 2px 0 3px;
+  font-family: 'Sora', 'Inter', sans-serif;
+  font-size: 1.12rem;
+  line-height: 1.05;
+  letter-spacing: -.04em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.current-racha-head small {
+  color: var(--muted);
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.current-racha-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.25fr;
+  gap: 8px;
+  margin-top: 13px;
+}
+
+.current-racha-stats > div {
+  padding: 10px;
+  border-radius: 16px;
+  background: rgba(255,255,255,.025);
+  border: 1px solid rgba(222,185,78,.11);
+  min-width: 0;
+}
+
+.current-racha-stats strong {
+  display: block;
+  color: var(--gold-2);
+  font-size: 1.05rem;
+  margin-top: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.premium-notes-card,
+.profile-config-card {
+  border-radius: 22px;
+}
+
+.profile-config-card > summary,
+.premium-notes-card > summary {
+  min-height: 58px;
+}
+
+.premium-rating-list {
+  gap: 8px;
+}
+
+.premium-rating-row {
+  min-height: 66px;
+  background:
+    linear-gradient(145deg, rgba(255,255,255,.035), rgba(255,255,255,.018));
+}
+
+.profile-settings-premium .profile-section-title {
+  margin-top: 2px;
+}
+
+.profile-premium-page .player-card-premium {
+  margin-inline: auto;
+}
+
+.profile-premium-page .profile-share-actions {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .profile-premium-page {
+    gap: 14px;
+  }
+
+  .profile-card-stage {
+    padding-top: 0;
+  }
+
+  .profile-kpi-grid {
+    gap: 7px;
+  }
+
+  .profile-kpi-card {
+    min-height: 74px;
+    padding: 11px 9px;
+    border-radius: 17px;
+  }
+
+  .profile-kpi-card span,
+  .current-racha-stats span {
+    font-size: .61rem;
+  }
+
+  .profile-kpi-card strong {
+    font-size: 1.34rem;
+  }
+
+  .profile-kpi-card small {
+    font-size: .64rem;
+  }
+
+  .profile-progress-note {
+    grid-template-columns: 34px minmax(0, 1fr);
+    padding: 11px;
+  }
+
+  .profile-progress-note svg {
+    width: 34px;
+    height: 34px;
+    padding: 8px;
+  }
+
+  .profile-progress-note p {
+    font-size: .82rem;
+  }
+
+  .current-racha-head {
+    grid-template-columns: 50px minmax(0,1fr) auto;
+    gap: 10px;
+  }
+
+  .current-racha-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 17px;
+  }
+
+  .current-racha-head h3 {
+    font-size: 1rem;
+  }
+
+  .current-racha-head small {
+    font-size: .78rem;
+  }
+
+  .current-racha-stats {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .current-racha-stats > div:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .profile-section-title h3 {
+    font-size: 1.05rem;
+  }
+}
+
+/* ============================================================
+   ETAPA 52 - PWA profissional e estabilidade mobile
+   ============================================================ */
+html { min-height: 100%; background: #050505; }
+body { min-height: 100%; background: #050505; }
+
+@supports (padding: max(0px)) {
+  body {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
+.pwa-status-banner {
+  position: fixed;
+  z-index: 9998;
+  left: max(12px, env(safe-area-inset-left));
+  right: max(12px, env(safe-area-inset-right));
+  top: max(10px, env(safe-area-inset-top));
+  padding: 11px 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(239, 210, 96, .25);
+  background: rgba(16, 16, 13, .92);
+  color: rgba(255,255,255,.88);
+  box-shadow: 0 18px 40px rgba(0,0,0,.32);
+  backdrop-filter: blur(18px);
+  font-size: .86rem;
+  font-weight: 800;
+  text-align: center;
+}
+.pwa-status-banner[data-type="offline"] {
+  border-color: rgba(255, 128, 128, .28);
+  color: #ffd5d5;
+}
+
+.pwa-action-banner {
+  position: fixed;
+  z-index: 9997;
+  left: max(14px, env(safe-area-inset-left));
+  right: max(14px, env(safe-area-inset-right));
+  bottom: max(14px, calc(env(safe-area-inset-bottom) + 12px));
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 24px;
+  border: 1px solid rgba(239, 210, 96, .26);
+  background: linear-gradient(135deg, rgba(21,21,18,.96), rgba(5,5,5,.96));
+  box-shadow: 0 24px 70px rgba(0,0,0,.48);
+  backdrop-filter: blur(20px);
+}
+.pwa-action-banner div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  flex: 1;
+}
+.pwa-action-banner strong {
+  color: #fff;
+  font-size: .96rem;
+  line-height: 1.1;
+}
+.pwa-action-banner span {
+  color: rgba(255,255,255,.62);
+  font-size: .78rem;
+  line-height: 1.3;
+}
+.pwa-action-banner button {
+  border: 0;
+  border-radius: 16px;
+  padding: 11px 14px;
+  background: linear-gradient(135deg, #f3d85c, #c9a529);
+  color: #080806;
+  font-weight: 950;
+  cursor: pointer;
+}
+.pwa-action-banner .icon-only {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 999px;
+  background: rgba(255,255,255,.08);
+  color: rgba(255,255,255,.75);
+  font-size: 1.2rem;
+}
+.pwa-action-banner.hidden,
+.pwa-status-banner.hidden { display: none !important; }
+
+.is-offline .global-progress { display: none; }
+.is-offline .btn-primary:not([data-offline-ok]),
+.is-offline .btn-secondary:not([data-offline-ok]) {
+  filter: saturate(.8);
+}
+
+@media (display-mode: standalone) {
+  .auth-shell,
+  .app-shell {
+    min-height: 100svh;
+  }
+}
