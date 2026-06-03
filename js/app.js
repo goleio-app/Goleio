@@ -7,7 +7,7 @@
 
 const SUPABASE_URL = window.GOLEIO_SUPABASE_URL;
 const SUPABASE_ANON_KEY = window.GOLEIO_SUPABASE_ANON_KEY;
-const GOLEIO_APP_VERSION = '56.0.0';
+const GOLEIO_APP_VERSION = '59.0.0';
 
 let sb = null;
 
@@ -45,7 +45,8 @@ const state = {
   lastSuccessfulLoadAt: 0,
   lastBackgroundRefreshAt: 0,
   pwaInstallPrompt: null,
-  pwaRefreshing: false
+  pwaRefreshing: false,
+  settingsOpenSection: null
 };
 
 
@@ -1178,6 +1179,8 @@ function bindBaseEvents() {
   $('tabRegister')?.addEventListener('click', () => toggleAuth('register'));
   $('logoutBtn')?.addEventListener('click', logout);
   $('mobileLogoutBtn')?.addEventListener('click', logout);
+  $('settingsBtn')?.addEventListener('click', () => openSettingsModal('home'));
+  $('mobileSettingsBtn')?.addEventListener('click', () => openSettingsModal('home'));
   $('pwaUpdateBtn')?.addEventListener('click', applyPwaUpdate);
   $('pwaInstallBtn')?.addEventListener('click', handlePwaInstall);
   $('pwaInstallClose')?.addEventListener('click', dismissPwaInstall);
@@ -1624,12 +1627,12 @@ function renderApp() {
 
 function getViewTitle() {
   const titles = {
-    dashboard: hasActiveRacha() ? 'Início do racha' : 'Início',
-    perfil: 'Minha cartinha',
-    racha: 'Comunidade do racha',
-    presenca: 'Confirmação de presença',
+    dashboard: hasActiveRacha() ? 'Comunidade do Racha' : 'Início',
+    perfil: 'Minha Cartinha',
+    racha: 'Comunidade do Racha',
+    presenca: 'Confirmação de Presença',
     ranking: 'Ranking do Goleio',
-    sorteio: isAdmin() ? 'Sorteio inteligente' : 'Últimos times'
+    sorteio: isAdmin() ? 'Sorteio Inteligente' : 'Últimos Times'
   };
   return titles[state.currentView] || 'Goleio';
 }
@@ -2106,108 +2109,300 @@ function renderPerfil() {
       </section>
 
       ${renderProfileRatingOverview()}
-
-      <section class="profile-settings-premium">
-        <div class="profile-section-title">
-          <div>
-            <p class="eyebrow">Minha conta</p>
-            <h3>Configurações do perfil</h3>
-          </div>
-          <span class="mini-tag gold">Perfil</span>
-        </div>
-
-        <details class="accordion-card profile-config-card">
-          <summary>
-            <span><i data-lucide="pencil"></i> Editar dados</span>
-            <i data-lucide="chevron-down" class="summary-chevron"></i>
-          </summary>
-          <div class="accordion-content">
-            <form id="profileForm">
-              <div class="grid-2">
-                <div>
-                  <label>Nome</label>
-                  <input id="profileNome" value="${safe(p.nome)}" required />
-                </div>
-                <div>
-                  <label>Apelido</label>
-                  <input id="profileApelido" value="${safe(p.apelido)}" placeholder="Seu apelido no racha" />
-                </div>
-              </div>
-
-              <label for="profileUsername">Usuário único</label>
-              <div class="username-field">
-                <span>@</span>
-                <input id="profileUsername" value="${safe(p.username || '')}" maxlength="30" placeholder="davidcbcampos" autocomplete="off" />
-              </div>
-              <p class="field-help">Esse @ será usado para buscar e convidar jogadores.</p>
-
-              <label for="profileTelefone">WhatsApp</label>
-              <input id="profileTelefone" type="tel" inputmode="numeric" maxlength="15" value="${safe(formatPhoneBR(p.telefone))}" placeholder="(34) 99999-9999" autocomplete="tel-national" />
-
-              <div class="grid-2">
-                <div>
-                  <label>${safe(positionScopeLabel)}</label>
-                  <select id="profilePosicaoDetalhada">
-                    ${positionOptions(p.posicao_detalhada || p.posicao || '', modalidade)}
-                  </select>
-                </div>
-                <div>
-                  <label>Tipo para sorteio</label>
-                  <select id="profilePosicaoTipo">
-                    ${option('linha', 'Linha', p.posicao_tipo || p.posicao || 'linha')}
-                    ${option('goleiro', 'Goleiro', p.posicao_tipo || p.posicao)}
-                    ${option('ambos', 'Ambos', p.posicao_tipo || p.posicao)}
-                  </select>
-                </div>
-              </div>
-              ${state.activeRacha ? '<p class="field-help racha-position-help">Essa posição vale para o racha selecionado. Em outro racha, você poderá usar outra posição.</p>' : '<p class="field-help racha-position-help">Sem racha selecionado, essa será sua posição padrão.</p>'}
-
-              <div class="grid-2">
-                <div>
-                  <label>Pé dominante</label>
-                  <select id="profilePe">
-                    ${option('nao_informado', 'Não informado', p.pe_dominante)}
-                    ${option('direito', 'Direito', p.pe_dominante)}
-                    ${option('esquerdo', 'Esquerdo', p.pe_dominante)}
-                    ${option('ambos', 'Ambos', p.pe_dominante)}
-                  </select>
-                </div>
-              </div>
-
-              <label>Estilo de jogo</label>
-              <select id="profileEstilo">
-                <option value="">Selecione</option>
-                ${option('marcador', 'Marcador', p.estilo_jogo)}
-                ${option('armador', 'Armador', p.estilo_jogo)}
-                ${option('velocista', 'Velocista', p.estilo_jogo)}
-                ${option('finalizador', 'Finalizador', p.estilo_jogo)}
-                ${option('goleiro', 'Goleiro', p.estilo_jogo)}
-                ${option('equilibrado', 'Equilibrado', p.estilo_jogo)}
-              </select>
-
-              <label>Bio curta</label>
-              <textarea id="profileBio" placeholder="Ex: jogo mais pela direita, gosto de tocar rápido...">${safe(p.bio)}</textarea>
-
-              <button class="btn-primary" type="submit"><i data-lucide="save"></i> Salvar perfil</button>
-            </form>
-          </div>
-        </details>
-
-        <details class="accordion-card profile-config-card">
-          <summary>
-            <span><i data-lucide="image-up"></i> Alterar foto</span>
-            <i data-lucide="chevron-down" class="summary-chevron"></i>
-          </summary>
-          <div class="accordion-content">
-            <p class="muted">Use imagem JPG, PNG, WEBP ou GIF até 2 MB.</p>
-            <label>Escolher foto</label>
-            <input id="avatarFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" />
-            <button class="btn-secondary full" data-action="upload-avatar"><i data-lucide="upload"></i> Enviar foto</button>
-          </div>
-        </details>
-      </section>
     </div>
   `;
+}
+
+
+function renderProfileSettingsForm() {
+  const p = getMyRachaProfile();
+  const modalidade = currentModalidade();
+  const positionScopeLabel = state.activeRacha ? `Posição neste racha (${state.activeRacha.nome})` : 'Posição padrão';
+  return `
+    <form id="profileForm" class="settings-form-stack">
+      <div class="grid-2">
+        <div>
+          <label>Nome</label>
+          <input id="profileNome" value="${safe(p.nome)}" required />
+        </div>
+        <div>
+          <label>Apelido</label>
+          <input id="profileApelido" value="${safe(p.apelido)}" placeholder="Seu apelido no racha" />
+        </div>
+      </div>
+
+      <label for="profileUsername">Usuário único</label>
+      <div class="username-field">
+        <span>@</span>
+        <input id="profileUsername" value="${safe(p.username || '')}" maxlength="30" placeholder="davidcbcampos" autocomplete="off" />
+      </div>
+      <p class="field-help">Esse @ será usado para buscar e convidar jogadores.</p>
+
+      <label for="profileTelefone">WhatsApp</label>
+      <input id="profileTelefone" type="tel" inputmode="numeric" maxlength="15" value="${safe(formatPhoneBR(p.telefone))}" placeholder="(34) 99999-9999" autocomplete="tel-national" />
+
+      <div class="grid-2">
+        <div>
+          <label>${safe(positionScopeLabel)}</label>
+          <select id="profilePosicaoDetalhada">
+            ${positionOptions(p.posicao_detalhada || p.posicao || '', modalidade)}
+          </select>
+        </div>
+        <div>
+          <label>Tipo para sorteio</label>
+          <select id="profilePosicaoTipo">
+            ${option('linha', 'Linha', p.posicao_tipo || p.posicao || 'linha')}
+            ${option('goleiro', 'Goleiro', p.posicao_tipo || p.posicao)}
+            ${option('ambos', 'Ambos', p.posicao_tipo || p.posicao)}
+          </select>
+        </div>
+      </div>
+      ${state.activeRacha ? '<p class="field-help racha-position-help">Essa posição vale para o racha selecionado. Em outro racha, você poderá usar outra posição.</p>' : '<p class="field-help racha-position-help">Sem racha selecionado, essa será sua posição padrão.</p>'}
+
+      <div class="grid-2">
+        <div>
+          <label>Pé dominante</label>
+          <select id="profilePe">
+            ${option('nao_informado', 'Não informado', p.pe_dominante)}
+            ${option('direito', 'Direito', p.pe_dominante)}
+            ${option('esquerdo', 'Esquerdo', p.pe_dominante)}
+            ${option('ambos', 'Ambos', p.pe_dominante)}
+          </select>
+        </div>
+      </div>
+
+      <label>Estilo de jogo</label>
+      <select id="profileEstilo">
+        <option value="">Selecione</option>
+        ${option('marcador', 'Marcador', p.estilo_jogo)}
+        ${option('armador', 'Armador', p.estilo_jogo)}
+        ${option('velocista', 'Velocista', p.estilo_jogo)}
+        ${option('finalizador', 'Finalizador', p.estilo_jogo)}
+        ${option('goleiro', 'Goleiro', p.estilo_jogo)}
+        ${option('equilibrado', 'Equilibrado', p.estilo_jogo)}
+      </select>
+
+      <label>Bio curta</label>
+      <textarea id="profileBio" placeholder="Ex: jogo mais pela direita, gosto de tocar rápido...">${safe(p.bio)}</textarea>
+
+      <button class="btn-primary" type="submit"><i data-lucide="save"></i> Salvar dados</button>
+    </form>
+  `;
+}
+
+function renderAvatarSettingsBlock() {
+  const p = getMyRachaProfile();
+  return `
+    <div class="settings-avatar-preview">
+      ${avatarHTML(p, true)}
+      <div>
+        <strong>${safe(p.apelido || p.nome || 'Jogador')}</strong>
+        <span>${p.username ? usernameText(p) : '@usuario'}</span>
+      </div>
+    </div>
+    <p class="muted">Use imagem JPG, PNG, WEBP ou GIF até 2 MB.</p>
+    <label>Escolher foto</label>
+    <input id="avatarFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" />
+    <button class="btn-primary full" data-action="upload-avatar"><i data-lucide="upload"></i> Enviar foto</button>
+  `;
+}
+
+function renderSettingsHomeModal() {
+  const p = getMyRachaProfile();
+  return `
+    <div class="modal-overlay settings-overlay">
+      <div class="bottom-sheet settings-sheet" role="dialog" aria-modal="true">
+        <div class="sheet-handle"></div>
+        <div class="sheet-head settings-head">
+          <div class="settings-user-row">
+            ${avatarHTML(p, false)}
+            <div>
+              <p class="eyebrow">Configurações</p>
+              <h2>${safe(p.apelido || p.nome || 'Minha conta')}</h2>
+              <span>${p.username ? usernameText(p) : 'Goleio'}</span>
+            </div>
+          </div>
+          <button class="modal-close sheet-close" data-action="close-modal" aria-label="Fechar"><i data-lucide="x"></i></button>
+        </div>
+        <div class="settings-menu-grid settings-menu-list">
+          <button class="settings-menu-item" data-action="open-account-edit">
+            <i data-lucide="user-round-cog"></i>
+            <span class="settings-menu-copy"><strong>Editar dados</strong><em>Nome, @, WhatsApp e posição principal</em></span>
+            <i class="settings-row-arrow" data-lucide="chevron-right"></i>
+          </button>
+          <button class="settings-menu-item" data-action="open-account-photo">
+            <i data-lucide="image-up"></i>
+            <span class="settings-menu-copy"><strong>Alterar foto</strong><em>Atualize sua imagem da cartinha</em></span>
+            <i class="settings-row-arrow" data-lucide="chevron-right"></i>
+          </button>
+          <button class="settings-menu-item" data-action="open-help-modal">
+            <i data-lucide="circle-help"></i>
+            <span class="settings-menu-copy"><strong>Ajuda do Goleio</strong><em>Dúvidas principais do app</em></span>
+            <i class="settings-row-arrow" data-lucide="chevron-right"></i>
+          </button>
+          <button class="settings-menu-item" data-action="open-install-help">
+            <i data-lucide="smartphone"></i>
+            <span class="settings-menu-copy"><strong>Instalar app</strong><em>Android e iPhone</em></span>
+            <i class="settings-row-arrow" data-lucide="chevron-right"></i>
+          </button>
+          <button class="settings-menu-item" data-action="logout">
+            <i data-lucide="log-out"></i>
+            <span class="settings-menu-copy"><strong>Sair da conta</strong><em>Encerrar sessão neste aparelho</em></span>
+            <i class="settings-row-arrow" data-lucide="chevron-right"></i>
+          </button>
+          <button class="settings-menu-item danger" data-action="open-delete-account-modal">
+            <i data-lucide="trash-2"></i>
+            <span class="settings-menu-copy"><strong>Excluir conta</strong><em>Remover seus dados públicos do Goleio</em></span>
+            <i class="settings-row-arrow" data-lucide="chevron-right"></i>
+          </button>
+        </div>
+        <div class="settings-version">Goleio v${safe(GOLEIO_APP_VERSION)}</div>
+      </div>
+    </div>
+  `;
+}
+
+function renderSettingsEditModal() {
+  return `
+    <div class="modal-overlay settings-overlay">
+      <div class="bottom-sheet settings-sheet" role="dialog" aria-modal="true">
+        <div class="sheet-handle"></div>
+        <div class="sheet-head">
+          <div>
+            <p class="eyebrow">Minha conta</p>
+            <h2>Editar dados</h2>
+          </div>
+          <button class="modal-close sheet-close" data-action="open-settings" aria-label="Voltar"><i data-lucide="arrow-left"></i></button>
+        </div>
+        ${renderProfileSettingsForm()}
+      </div>
+    </div>
+  `;
+}
+
+function renderSettingsPhotoModal() {
+  return `
+    <div class="modal-overlay settings-overlay">
+      <div class="bottom-sheet settings-sheet" role="dialog" aria-modal="true">
+        <div class="sheet-handle"></div>
+        <div class="sheet-head">
+          <div>
+            <p class="eyebrow">Minha conta</p>
+            <h2>Alterar foto</h2>
+          </div>
+          <button class="modal-close sheet-close" data-action="open-settings" aria-label="Voltar"><i data-lucide="arrow-left"></i></button>
+        </div>
+        ${renderAvatarSettingsBlock()}
+      </div>
+    </div>
+  `;
+}
+
+function renderHelpModal() {
+  const items = [
+    ['Como entrar em um racha?', 'Peça o código ou convite para o administrador. Depois entre pelo Início e aguarde aprovação, se o racha exigir.'],
+    ['Por que preciso escolher posição por racha?', 'Cada modalidade tem posições diferentes. Sua posição no futsal pode ser diferente da sua posição no society ou campo.'],
+    ['Como funciona a cartinha?', 'A cartinha mostra seu overall e habilidades com base nas avaliações recebidas dentro dos rachas.'],
+    ['Quem pode avaliar?', 'Depende da regra do racha. Normalmente administradores e avaliadores conseguem avaliar jogadores.'],
+    ['Como funciona o sorteio?', 'O sorteio considera presença, goleiros, posições e overall ponderado para montar times mais justos.'],
+    ['Como confirmar presença?', 'Entre na aba Presença, escolha o próximo jogo e marque se vai jogar, talvez, espera ou não vai.'],
+    ['Como sair de uma comunidade?', 'Entre no racha, toque em Mais e escolha sair da comunidade.'],
+    ['Como excluir minha conta?', 'Abra Configurações, toque em Excluir conta e confirme digitando a frase solicitada.']
+  ];
+  return `
+    <div class="modal-overlay settings-overlay">
+      <div class="bottom-sheet settings-sheet" role="dialog" aria-modal="true">
+        <div class="sheet-handle"></div>
+        <div class="sheet-head">
+          <div>
+            <p class="eyebrow">Suporte</p>
+            <h2>Ajuda do Goleio</h2>
+          </div>
+          <button class="modal-close sheet-close" data-action="open-settings" aria-label="Voltar"><i data-lucide="arrow-left"></i></button>
+        </div>
+        <div class="settings-help-list">
+          ${items.map(([q, a]) => `
+            <details class="settings-help-item">
+              <summary>${safe(q)} <i data-lucide="chevron-down"></i></summary>
+              <p>${safe(a)}</p>
+            </details>
+          `).join('')}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderInstallHelpModal() {
+  return `
+    <div class="modal-overlay settings-overlay">
+      <div class="bottom-sheet settings-sheet" role="dialog" aria-modal="true">
+        <div class="sheet-handle"></div>
+        <div class="sheet-head">
+          <div>
+            <p class="eyebrow">PWA</p>
+            <h2>Instalar o Goleio</h2>
+          </div>
+          <button class="modal-close sheet-close" data-action="open-settings" aria-label="Voltar"><i data-lucide="arrow-left"></i></button>
+        </div>
+        <div class="install-help-card">
+          <h3>Android</h3>
+          <p>Abra no Chrome, toque no menu do navegador e escolha <strong>Instalar app</strong> ou <strong>Adicionar à tela inicial</strong>.</p>
+        </div>
+        <div class="install-help-card">
+          <h3>iPhone</h3>
+          <p>Abra no Safari, toque em <strong>Compartilhar</strong> e depois em <strong>Adicionar à Tela de Início</strong>.</p>
+        </div>
+        <button class="btn-secondary full" data-action="try-pwa-install"><i data-lucide="download"></i> Tentar instalar agora</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderDeleteAccountModal() {
+  return `
+    <div class="modal-overlay danger-confirm-overlay settings-overlay">
+      <div class="player-modal danger-confirm-modal" role="dialog" aria-modal="true">
+        <button class="modal-close" data-action="open-settings" aria-label="Voltar"><i data-lucide="arrow-left"></i></button>
+        <div class="danger-confirm-head">
+          <span class="danger-confirm-icon"><i data-lucide="trash-2"></i></span>
+          <div>
+            <p class="eyebrow">Zona de perigo</p>
+            <h2>Excluir minha conta</h2>
+            <p class="muted">Sua conta será desativada no Goleio. Seu nome, foto e dados públicos serão removidos das comunidades. Essa ação não pode ser desfeita.</p>
+          </div>
+        </div>
+        <div class="danger-confirm-box">
+          <label>Digite EXCLUIR MINHA CONTA para confirmar</label>
+          <input id="deleteAccountConfirmInput" autocomplete="off" placeholder="Confirmação obrigatória" />
+          <p class="field-help">Se você administra uma comunidade com outros membros, organize a comunidade antes de excluir sua conta.</p>
+        </div>
+        <div class="form-actions danger-confirm-actions">
+          <button class="btn-secondary" type="button" data-action="open-settings"><i data-lucide="arrow-left"></i> Voltar</button>
+          <button class="btn-danger" type="button" data-action="confirm-delete-account"><i data-lucide="trash-2"></i> Excluir minha conta</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function openSettingsModal(view = 'home') {
+  closeModal();
+  const renderers = {
+    home: renderSettingsHomeModal,
+    edit: renderSettingsEditModal,
+    photo: renderSettingsPhotoModal,
+    help: renderHelpModal,
+    install: renderInstallHelpModal,
+    deleteAccount: renderDeleteAccountModal
+  };
+  const html = (renderers[view] || renderers.home)();
+  document.body.insertAdjacentHTML('beforeend', html);
+  refreshIcons();
+  setTimeout(() => {
+    if (view === 'edit') $('profileNome')?.focus();
+    if (view === 'deleteAccount') $('deleteAccountConfirmInput')?.focus();
+  }, 80);
 }
 
 function option(value, label, selected) {
@@ -4462,6 +4657,15 @@ async function handleClick(event) {
     return;
   }
   if (action === 'answer-invite') await answerInvite(actionEl.dataset.inviteId, actionEl.dataset.accept === 'true', actionEl);
+  if (action === 'open-settings') { openSettingsModal('home'); return; }
+  if (action === 'open-account-edit') { openSettingsModal('edit'); return; }
+  if (action === 'open-account-photo') { openSettingsModal('photo'); return; }
+  if (action === 'open-help-modal') { openSettingsModal('help'); return; }
+  if (action === 'open-install-help') { openSettingsModal('install'); return; }
+  if (action === 'try-pwa-install') { await handlePwaInstall(); return; }
+  if (action === 'logout') { await logout(); return; }
+  if (action === 'open-delete-account-modal') { openSettingsModal('deleteAccount'); return; }
+  if (action === 'confirm-delete-account') { await deleteMyAccount(actionEl); return; }
   if (action === 'upload-avatar') await uploadAvatar(actionEl);
   if (action === 'set-presence') await setPresence(actionEl.dataset.status);
   if (action === 'open-player-profile') openPlayerProfile(actionEl.dataset.userId);
@@ -5145,7 +5349,9 @@ async function saveProfile(button) {
       await loadRachaData();
     }
 
+    const wasSettingsModal = Boolean(document.querySelector('.settings-overlay'));
     renderApp();
+    if (wasSettingsModal) openSettingsModal('home');
     toast('Perfil salvo.');
   } catch (error) {
     console.error(error);
@@ -5197,10 +5403,46 @@ async function uploadAvatar(button) {
     toast('Foto enviada, mas não consegui salvar no perfil.');
     return;
   }
+  const wasSettingsModal = Boolean(document.querySelector('.settings-overlay'));
   state.profile = data;
   await loadRachaData();
   renderApp();
+  if (wasSettingsModal) openSettingsModal('home');
   toast('Foto atualizada!');
+}
+
+
+async function deleteMyAccount(button = null) {
+  const confirmacao = $('deleteAccountConfirmInput')?.value?.trim() || '';
+  if (confirmacao !== 'EXCLUIR MINHA CONTA') {
+    toast('Digite exatamente EXCLUIR MINHA CONTA para confirmar.');
+    $('deleteAccountConfirmInput')?.focus();
+    return;
+  }
+  try {
+    setLoading(button, true, 'Excluindo...');
+    const { error } = await sb.rpc('excluir_minha_conta_app', {
+      p_confirmacao: confirmacao
+    });
+    if (error) throw error;
+    closeModal();
+    localStorage.removeItem('goleio_active_racha');
+    localStorage.removeItem('goleio_last_view');
+    toast('Sua conta foi removida do Goleio.');
+    await sb.auth.signOut();
+    state.session = null;
+    state.user = null;
+    state.profile = null;
+    state.memberships = [];
+    state.activeMembership = null;
+    state.activeRacha = null;
+    showAuth();
+  } catch (error) {
+    console.error(error);
+    toast(error.message || 'Não consegui excluir sua conta agora.');
+  } finally {
+    setLoading(button, false);
+  }
 }
 
 async function setPresence(status) {
